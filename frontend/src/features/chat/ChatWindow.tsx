@@ -70,6 +70,10 @@ export const ChatWindow: React.FC = () => {
             }
         });
 
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
+
         if (!response.body) throw new Error('No response body');
         
         const reader = response.body.getReader();
@@ -103,7 +107,7 @@ export const ChatWindow: React.FC = () => {
     } catch (err) {
       console.error('Failed to send message', err);
       setMessages(prev => prev.map(m => 
-        m.id === aiMsgId ? { ...m, content: '发送失败，请稍后重试。' } : m
+        m.id === aiMsgId ? { ...m, content: '⚠️ 咨询服务暂时不可用，可能是网络波动或系统正在维护，请稍后重试。' } : m
       ));
     } finally {
       setLoading(false);

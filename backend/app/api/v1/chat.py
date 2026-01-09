@@ -101,9 +101,14 @@ async def chat_completion(
     )
     db.add(ai_msg)
     
+    # 核心修复：使用 update 语句确保摘要更新生效
     if new_summary:
-        session.last_summary = new_summary
-        db.add(session)
+        from sqlalchemy import update
+        await db.execute(
+            update(ChatSession)
+            .where(ChatSession.id == session_id)
+            .values(last_summary=new_summary)
+        )
         
     await db.commit()
     
@@ -187,8 +192,12 @@ async def chat_completion_stream(
         db.add(ai_msg)
         
         if new_summary:
-            session.last_summary = new_summary
-            db.add(session)
+            from sqlalchemy import update
+            await db.execute(
+                update(ChatSession)
+                .where(ChatSession.id == session_id)
+                .values(last_summary=new_summary)
+            )
             
         await db.commit()
         

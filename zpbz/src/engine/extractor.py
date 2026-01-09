@@ -89,64 +89,58 @@ class CoreExtractor:
         else:
             eight_char.setSect(2)
             
-        def get_col(gan_func, zhi_func, shi_gan_func, shi_zhi_func, hide_gan_func, na_yin_func, xun_kong_func) -> Column:
-            return Column(
-                gan=gan_func(),
-                zhi=zhi_func(),
-                shi_shen_gan=shi_gan_func(),
-                shi_shen_zhi=shi_zhi_func(),
-                hide_gan=hide_gan_func(),
-                na_yin=na_yin_func(),
-                xun_kong=list(xun_kong_func())
-            )
+        # 显式获取精确干支（干支历，精确到秒/节气时刻）
+        exact_year = lunar.getYearInGanZhiExact()
+        exact_month = lunar.getMonthInGanZhiExact()
+        exact_day = lunar.getDayInGanZhiExact()
+        exact_time = lunar.getTimeInGanZhi()
 
         # 补救 2.1.3: 处理月柱分支模式
-        month_gan = eight_char.getMonthGan()
-        month_zhi = eight_char.getMonthZhi()
         if ctx.request.month_mode == MonthMode.LUNAR_MONTH:
             from lunar_python import LunarYear
             ly = LunarYear.fromYear(lunar.getYear())
-            # 找到对应的农历月对象，需匹配月份数字且匹配闰月属性
             lm = None
             for m in ly.getMonths():
                 if abs(m.getMonth()) == abs(lunar.getMonth()):
-                    # 如果当前月是闰月，则必须匹配闰月属性；否则匹配非闰月
                     if (lunar.getMonth() < 0 and m.getMonth() < 0) or (lunar.getMonth() > 0 and m.getMonth() > 0):
                         lm = m
                         break
             if lm:
-                month_gan = lm.getGanZhi()[:1]
-                month_zhi = lm.getGanZhi()[1:]
+                exact_month = lm.getGanZhi()
 
         return CoreChart(
-            year=get_col(
-                eight_char.getYearGan, eight_char.getYearZhi,
-                eight_char.getYearShiShenGan, eight_char.getYearShiShenZhi,
-                eight_char.getYearHideGan, eight_char.getYearNaYin,
-                eight_char.getYearXunKong
+            year=Column(
+                gan=exact_year[0], zhi=exact_year[1],
+                shi_shen_gan=eight_char.getYearShiShenGan(),
+                shi_shen_zhi=eight_char.getYearShiShenZhi(),
+                hide_gan=eight_char.getYearHideGan(),
+                na_yin=eight_char.getYearNaYin(),
+                xun_kong=list(eight_char.getYearXunKong())
             ),
             month=Column(
-                gan=month_gan,
-                zhi=month_zhi,
+                gan=exact_month[0], zhi=exact_month[1],
                 shi_shen_gan=eight_char.getMonthShiShenGan(),
                 shi_shen_zhi=eight_char.getMonthShiShenZhi(),
                 hide_gan=eight_char.getMonthHideGan(),
                 na_yin=eight_char.getMonthNaYin(),
                 xun_kong=list(eight_char.getMonthXunKong())
             ),
-            day=get_col(
-                eight_char.getDayGan, eight_char.getDayZhi,
-                eight_char.getDayShiShenGan, eight_char.getDayShiShenZhi,
-                eight_char.getDayHideGan, eight_char.getDayNaYin,
-                eight_char.getDayXunKong
+            day=Column(
+                gan=exact_day[0], zhi=exact_day[1],
+                shi_shen_gan=eight_char.getDayShiShenGan(),
+                shi_shen_zhi=eight_char.getDayShiShenZhi(),
+                hide_gan=eight_char.getDayHideGan(),
+                na_yin=eight_char.getDayNaYin(),
+                xun_kong=list(eight_char.getDayXunKong())
             ),
-            time=get_col(
-                eight_char.getTimeGan, eight_char.getTimeZhi,
-                eight_char.getTimeShiShenGan, eight_char.getTimeShiShenZhi,
-                eight_char.getTimeHideGan, eight_char.getTimeNaYin,
-                eight_char.getTimeXunKong
+            time=Column(
+                gan=exact_time[0], zhi=exact_time[1],
+                shi_shen_gan=eight_char.getTimeShiShenGan(),
+                shi_shen_zhi=eight_char.getTimeShiShenZhi(),
+                hide_gan=eight_char.getTimeHideGan(),
+                na_yin=eight_char.getTimeNaYin(),
+                xun_kong=list(eight_char.getTimeXunKong())
             ),
-            # 补救 2.1.2: 节气上下文
             jie_qi=JieQiContext(
                 prev_name=lunar.getPrevJie().getName(),
                 prev_jie=re.sub(r"\s(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座", "", lunar.getPrevJie().getSolar().toFullString()),
@@ -166,7 +160,6 @@ class FortuneExtractor:
         before_start_xiao_yun = []
         
         for i, dy in enumerate(yun.getDaYun()):
-            # 补救 2.2.2: 提取小运
             xiao_yun_objs = []
             for xy in dy.getXiaoYun():
                 xiao_yun_objs.append(XiaoYunData(index=xy.getIndex(), gan_zhi=xy.getGanZhi()))
@@ -177,8 +170,6 @@ class FortuneExtractor:
             
             ln_list = []
             for ln in dy.getLiuNian():
-                # 暂不返回流月，防止数据量过大导致接口超时
-                # PRD 要求点击后再钻取，符合设计。
                 ln_list.append(LiuNianData(
                     year=ln.getYear(),
                     gan_zhi=ln.getGanZhi(),
@@ -198,7 +189,6 @@ class FortuneExtractor:
             
         return FortuneData(
             start_solar=re.sub(r"\s(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座", "", yun.getStartSolar().toFullString()),
-            # 补救 2.2.3: 修正起运年龄获取
             start_age=yun.getStartYear() - ctx.solar.getYear() if yun.getStartYear() > 0 else 0,
             da_yun=da_yun_list,
             before_start_xiao_yun=before_start_xiao_yun
