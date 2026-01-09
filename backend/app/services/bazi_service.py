@@ -23,6 +23,8 @@ class BaziService:
             calendar_type=CalendarType.SOLAR if archive.calendar_type == "SOLAR" else CalendarType.LUNAR,
             birth_datetime=archive.birth_time.strftime("%Y-%m-%d %H:%M:%S"),
             birth_location=archive.location_name,
+            longitude=archive.lng,
+            latitude=archive.lat,
             time_mode=TimeMode[archive.algorithms_config.get("time_mode", "TRUE_SOLAR")],
             month_mode=MonthMode[archive.algorithms_config.get("month_mode", "SOLAR_TERM")],
             zi_shi_mode=ZiShiMode[archive.algorithms_config.get("zi_shi_mode", "LATE_ZI_IN_DAY")]

@@ -177,17 +177,13 @@ class FortuneExtractor:
             
             ln_list = []
             for ln in dy.getLiuNian():
-                ly_list = []
-                for ly_item in ln.getLiuYue():
-                    ly_list.append(LiuYueData(
-                        month=ly_item.getIndex() + 1,
-                        gan_zhi=ly_item.getGanZhi()
-                    ))
+                # 暂不返回流月，防止数据量过大导致接口超时
+                # PRD 要求点击后再钻取，符合设计。
                 ln_list.append(LiuNianData(
                     year=ln.getYear(),
                     gan_zhi=ln.getGanZhi(),
                     xun=ln.getXun(),
-                    liu_yue=ly_list
+                    liu_yue=[]
                 ))
                 
             da_yun_list.append(DaYunData(

@@ -34,6 +34,8 @@ class BaziRequest(BaseModel):
     calendar_type: CalendarType = CalendarType.SOLAR
     birth_datetime: str  # 格式: YYYY-MM-DD HH:mm:ss
     birth_location: str = "北京"
+    longitude: Optional[float] = None # 显式经度
+    latitude: Optional[float] = None  # 显式纬度
     
     # 算法开关
     time_mode: TimeMode = TimeMode.TRUE_SOLAR

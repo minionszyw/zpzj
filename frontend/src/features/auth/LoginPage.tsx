@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +21,18 @@ export const LoginPage: React.FC = () => {
       await authApi.sendCode(email);
       setIsSent(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail || '发送验证码失败');
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail;
+        if (typeof detail === 'string') {
+          setError(detail);
+        } else if (Array.isArray(detail)) {
+          setError(detail[0]?.msg || '发送验证码失败');
+        } else {
+          setError('发送验证码失败，请检查邮箱格式');
+        }
+      } else {
+        setError('发送失败');
+      }
     } finally {
       setLoading(false);
     }
@@ -34,7 +46,12 @@ export const LoginPage: React.FC = () => {
       setAuth(response.data.user, response.data.access_token);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || '登录失败');
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail;
+        setError(typeof detail === 'string' ? detail : '登录失败，验证码错误');
+      } else {
+        setError('登录失败');
+      }
     } finally {
       setLoading(false);
     }

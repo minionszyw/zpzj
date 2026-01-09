@@ -193,10 +193,16 @@ async def delete_session(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
-    stmt = delete(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
-    await db.execute(stmt)
+    # 1. 删除关联消息
+    stmt_msgs = delete(Message).where(Message.session_id == session_id)
+    await db.execute(stmt_msgs)
+    
+    # 2. 删除会话
+    stmt_session = delete(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    await db.execute(stmt_session)
+    
     await db.commit()
-    return {"message": "Session deleted"}
+    return {"message": "Session and messages deleted"}
 
 @router.get("/sessions/{session_id}/facts")
 async def get_session_facts(

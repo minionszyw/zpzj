@@ -100,7 +100,10 @@ class Preprocessor:
         solar = DSTCorrector.check_and_correct(solar)
         
         # 3. 经度获取
-        longitude = self.config.get_longitude(request.birth_location)
+        if request.longitude is not None:
+            longitude = request.longitude
+        else:
+            longitude = self.config.get_longitude(request.birth_location)
         
         # 4. 真太阳时校正 (如果模式开启)
         if request.time_mode == TimeMode.TRUE_SOLAR:

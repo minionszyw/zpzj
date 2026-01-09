@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Fragment } from 'react';
-import { Dialog, Transition, Combobox } from '@headlessui/react';
-import { X, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Dialog, Transition, Combobox, Disclosure } from '@headlessui/react';
+import { X, Check, ChevronsUpDown, Search, ChevronRight, Settings2 } from 'lucide-react';
 import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -24,6 +24,11 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
     location_name: '北京市',
     relation: '',
     is_self: false,
+    algorithms_config: {
+        time_mode: 'TRUE_SOLAR',
+        month_mode: 'SOLAR_TERM',
+        zi_shi_mode: 'LATE_ZI_IN_DAY'
+    }
   });
   
   const [query, setQuery] = useState('');
@@ -57,6 +62,13 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
         location_name: archive.location_name,
         relation: archive.relation || '',
         is_self: archive.is_self,
+        // Ensure default values if missing
+        algorithms_config: {
+            time_mode: 'TRUE_SOLAR',
+            month_mode: 'SOLAR_TERM',
+            zi_shi_mode: 'LATE_ZI_IN_DAY',
+            ...(archive as any).algorithms_config
+        }
       });
       setQuery(archive.location_name);
     } else {
@@ -70,6 +82,11 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
         location_name: '北京市',
         relation: '',
         is_self: false,
+        algorithms_config: {
+            time_mode: 'TRUE_SOLAR',
+            month_mode: 'SOLAR_TERM',
+            zi_shi_mode: 'LATE_ZI_IN_DAY'
+        }
       });
       setQuery('北京市');
     }
@@ -274,6 +291,68 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                       value={formData.relation}
                       onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
                     />
+                  </div>
+
+                  {/* Advanced Settings Disclosure */}
+                  <div className="py-2">
+                    <Disclosure>
+                      {({ open }) => (
+                        <>
+                          <Disclosure.Button className="flex w-full items-center justify-between rounded-xl bg-gray-50 px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring focus-visible:ring-brand-primary focus-visible:ring-opacity-75 transition-all">
+                            <span className="flex items-center gap-2 font-bold text-xs uppercase text-gray-500">
+                                <Settings2 size={14} /> 命理算法偏好 (高级)
+                            </span>
+                            <ChevronRight
+                              className={cn("h-4 w-4 text-gray-400 transition-transform", open && "rotate-90")}
+                            />
+                          </Disclosure.Button>
+                          <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-500 space-y-4 border border-gray-100 rounded-b-xl -mt-2 bg-white/50">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">时间模式</label>
+                                <select
+                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    value={formData.algorithms_config.time_mode}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        algorithms_config: { ...formData.algorithms_config, time_mode: e.target.value }
+                                    })}
+                                >
+                                    <option value="TRUE_SOLAR">真太阳时 (推荐)</option>
+                                    <option value="MEAN_SOLAR">平太阳时 (北京时间)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">定月模式</label>
+                                <select
+                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    value={formData.algorithms_config.month_mode}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        algorithms_config: { ...formData.algorithms_config, month_mode: e.target.value }
+                                    })}
+                                >
+                                    <option value="SOLAR_TERM">节气定月 (推荐)</option>
+                                    <option value="LUNAR_MONTH">农历月定月</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">子时模式</label>
+                                <select
+                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    value={formData.algorithms_config.zi_shi_mode}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        algorithms_config: { ...formData.algorithms_config, zi_shi_mode: e.target.value }
+                                    })}
+                                >
+                                    <option value="LATE_ZI_IN_DAY">晚子时不换日 (推荐)</option>
+                                    <option value="NEXT_DAY">23点换日 (早晚子时皆换日)</option>
+                                </select>
+                            </div>
+                          </Disclosure.Panel>
+                        </>
+                      )}
+                    </Disclosure>
                   </div>
 
                   <div className="flex items-center gap-2 px-1">
