@@ -72,14 +72,17 @@ async def chat_completion(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    user_msg = Message(session_id=session_id, role="user", content=content)
-    db.add(user_msg)
-    
+    # 获取历史消息作为上下文
+    history_res = await db.execute(
+        select(Message).where(Message.session_id == session_id).order_by(Message.created_at.asc())
+    )
+    history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
+
     graph = build_graph()
     initial_state = {
         "archive_id": str(session.archive_id),
         "query": content,
-        "messages": [{"role": "user", "content": content}],
+        "messages": history_msgs + [{"role": "user", "content": content}],
         "context_sufficient": True,
         "last_summary": session.last_summary or "",
         "response_mode": current_user.settings.get("response_mode", "normal")
@@ -127,12 +130,18 @@ async def chat_completion_stream(
     db.add(user_msg)
     await db.commit()
     
+    # 获取历史消息
+    history_res = await db.execute(
+        select(Message).where(Message.session_id == session_id).order_by(Message.created_at.asc())
+    )
+    history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
+
     async def event_generator():
         graph = build_graph()
         initial_state = {
             "archive_id": str(session.archive_id),
             "query": content,
-            "messages": [{"role": "user", "content": content}],
+            "messages": history_msgs, # history_msgs 已经包含了刚才保存的 user_msg
             "context_sufficient": True,
             "last_summary": session.last_summary or "",
             "response_mode": current_user.settings.get("response_mode", "normal")

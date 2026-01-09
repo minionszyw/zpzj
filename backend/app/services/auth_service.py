@@ -11,7 +11,19 @@ from fastapi import HTTPException, status
 class AuthService:
     @staticmethod
     async def send_code(email: str):
-        # 频率限制可以在这里做，或者通过 FastAPI Middleware
+        # 1. 速率限制：1 分钟内同一邮箱限制发送 3 次
+        limit_key = f"rate_limit:send_code:{email}"
+        count = await redis_client.incr(limit_key)
+        if count == 1:
+            await redis_client.expire(limit_key, 60)
+        
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="请求过于频繁，请稍后再试"
+            )
+
+        # 2. 生成并存储验证码
         code = generate_verification_code()
         # 存入 Redis，有效期 5 分钟
         await redis_client.set(f"auth_code:{email}", code, ex=300)
