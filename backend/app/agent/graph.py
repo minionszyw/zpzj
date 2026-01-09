@@ -5,6 +5,7 @@ from app.agent.nodes.calculate import calculate_node
 from app.agent.nodes.respond import respond_node
 from app.agent.nodes.memory import memory_node
 from app.agent.nodes.rag import rag_node
+from app.agent.nodes.summarize import summarize_node
 
 def should_continue(state: AgentState):
     if not state["context_sufficient"]:
@@ -19,6 +20,7 @@ def build_graph():
     workflow.add_node("rag", rag_node)
     workflow.add_node("respond", respond_node)
     workflow.add_node("memory", memory_node)
+    workflow.add_node("summarize", summarize_node)
     
     workflow.set_entry_point("intent")
     
@@ -34,6 +36,7 @@ def build_graph():
     workflow.add_edge("calculate", "rag")
     workflow.add_edge("rag", "respond")
     workflow.add_edge("respond", "memory")
-    workflow.add_edge("memory", END)
+    workflow.add_edge("memory", "summarize")
+    workflow.add_edge("summarize", END)
     
     return workflow.compile()

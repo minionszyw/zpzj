@@ -64,7 +64,7 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 docker-compose up -d --build
 ```
 
-- 前端地址：`http://localhost:5173` (如手动启动)
+- 前端地址：`http://localhost:5173`
 - 后端 API 地址：`http://localhost:8000`
 - API 文档：`http://localhost:8000/docs`
 

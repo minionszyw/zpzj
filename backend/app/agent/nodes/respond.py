@@ -13,16 +13,29 @@ async def respond_node(state: AgentState):
     bazi_json = state.get("bazi_result", "{}")
     knowledge = state.get("retrieved_knowledge", [])
     facts = state.get("retrieved_facts", [])
+    summary = state.get("last_summary", "")
+    mode = state.get("response_mode", "normal")
     
+    mode_instruction = ""
+    if mode == "professional":
+        mode_instruction = "当前处于【专业模式】：请大幅增加对古籍原文的引用，使用专业术语进行深入剖析干支作用关系。"
+    else:
+        mode_instruction = "当前处于【普通模式】：请使用通俗易懂的语言，侧重于心理疏导和行动建议，避免过多的生僻术语。"
+
     # 策略：利用 Prompt Caching，强制置顶核心数据
     system_prompt = f"""
     你是一个专业的命理分析师“子平真君”。你基于《渊海子平》经典理论进行分析。
+    
+    {mode_instruction}
     
     【核心命盘数据】:
     {bazi_json}
     
     【已知事实】:
     {facts}
+    
+    【前情提要】:
+    {summary}
     
     【古籍参考】:
     {knowledge}

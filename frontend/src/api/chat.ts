@@ -21,6 +21,7 @@ export const chatApi = {
   getMessages: (sessionId: string) => api.get<Message[]>(`/chat/sessions/${sessionId}/messages`),
   // Non-streaming completion for now
   sendMessage: (sessionId: string, content: string) => api.post('/chat/completions', { session_id: sessionId, content }),
+  deleteSession: (sessionId: string) => api.delete(`/chat/sessions/${sessionId}`),
   getFacts: (sessionId: string) => api.get(`/chat/sessions/${sessionId}/facts`),
   deleteFact: (factId: string) => api.delete(`/chat/facts/${factId}`),
 };

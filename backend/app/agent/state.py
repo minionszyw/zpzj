@@ -23,6 +23,8 @@ class AgentState(TypedDict):
     
     # 对话历史
     messages: Annotated[List[Dict[str, str]], add]
+    last_summary: str
+    response_mode: str # normal, professional
     
     # 最终输出
     final_response: str

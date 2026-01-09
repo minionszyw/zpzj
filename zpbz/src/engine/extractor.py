@@ -30,39 +30,39 @@ class CoreChart(BaseModel):
     jie_qi: JieQiContext
 
 # --- 动态运程 ---
-class LiuRi(BaseModel):
+class LiuRiData(BaseModel):
     day: int
     gan_zhi: str
 
-class LiuYue(BaseModel):
+class LiuYueData(BaseModel):
     month: int
     gan_zhi: str
-    liu_ri: List[LiuRi] = []
+    liu_ri: List[LiuRiData] = []
 
-class LiuNian(BaseModel):
+class LiuNianData(BaseModel):
     year: int
     gan_zhi: str
     xun: str
-    liu_yue: List[LiuYue] = []
+    liu_yue: List[LiuYueData] = []
 
-class XiaoYun(BaseModel):
+class XiaoYunData(BaseModel):
     index: int
     gan_zhi: str
 
-class DaYun(BaseModel):
+class DaYunData(BaseModel):
     index: int
     start_year: int
     start_age: int
     gan_zhi: str
     xun: str
-    liu_nian: List[LiuNian] = []
-    xiao_yun: List[XiaoYun] = []
+    liu_nian: List[LiuNianData] = []
+    xiao_yun: List[XiaoYunData] = []
 
 class FortuneData(BaseModel):
     start_solar: str
     start_age: int
-    da_yun: List[DaYun]
-    before_start_xiao_yun: List[XiaoYun] = [] # 起运前的小运
+    da_yun: List[DaYunData]
+    before_start_xiao_yun: List[XiaoYunData] = [] # 起运前的小运
 
 # --- 辅助命盘 ---
 class AuxiliaryChart(BaseModel):
@@ -166,10 +166,9 @@ class FortuneExtractor:
         before_start_xiao_yun = []
         
         for i, dy in enumerate(yun.getDaYun()):
-            # 补救 2.2.2: 提取小运
             xiao_yun_objs = []
             for xy in dy.getXiaoYun():
-                xiao_yun_objs.append(XiaoYun(index=xy.getIndex(), gan_zhi=xy.getGanZhi()))
+                xiao_yun_objs.append(XiaoYunData(index=xy.getIndex(), gan_zhi=xy.getGanZhi()))
             
             if i == 0:
                 before_start_xiao_yun = xiao_yun_objs
@@ -177,15 +176,20 @@ class FortuneExtractor:
             
             ln_list = []
             for ln in dy.getLiuNian():
-                # 补救 2.2.1: 预留级联结构
-                ln_list.append(LiuNian(
+                ly_list = []
+                for ly in ln.getLiuYue():
+                    ly_list.append(LiuYueData(
+                        month=ly.getMonth(),
+                        gan_zhi=ly.getGanZhi()
+                    ))
+                ln_list.append(LiuNianData(
                     year=ln.getYear(),
                     gan_zhi=ln.getGanZhi(),
                     xun=ln.getXun(),
-                    liu_yue=[] # 暂不深度递归，防止输出过大
+                    liu_yue=ly_list
                 ))
                 
-            da_yun_list.append(DaYun(
+            da_yun_list.append(DaYunData(
                 index=i,
                 start_year=dy.getStartYear(),
                 start_age=dy.getStartAge(),
@@ -197,7 +201,6 @@ class FortuneExtractor:
             
         return FortuneData(
             start_solar=re.sub(r"\s(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座", "", yun.getStartSolar().toFullString()),
-            # 补救 2.2.3: 修正起运年龄获取
             start_age=yun.getStartYear() - ctx.solar.getYear() if yun.getStartYear() > 0 else 0,
             da_yun=da_yun_list,
             before_start_xiao_yun=before_start_xiao_yun

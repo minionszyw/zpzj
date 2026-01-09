@@ -5,6 +5,10 @@ interface User {
   id: number;
   email: string;
   nickname?: string;
+  settings?: {
+    depth: number;
+    response_mode: 'normal' | 'professional';
+  };
 }
 
 interface AuthState {

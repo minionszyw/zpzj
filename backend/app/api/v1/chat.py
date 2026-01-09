@@ -80,11 +80,14 @@ async def chat_completion(
         "archive_id": str(session.archive_id),
         "query": content,
         "messages": [{"role": "user", "content": content}],
-        "context_sufficient": True
+        "context_sufficient": True,
+        "last_summary": session.last_summary or "",
+        "response_mode": current_user.settings.get("response_mode", "normal")
     }
     
     agent_result = await graph.ainvoke(initial_state)
     final_response = agent_result.get("final_response", "")
+    new_summary = agent_result.get("last_summary")
     
     # 3. 保存 AI 消息
     ai_msg = Message(
@@ -94,6 +97,11 @@ async def chat_completion(
         meta_data={"intent": agent_result.get("intent")}
     )
     db.add(ai_msg)
+    
+    if new_summary:
+        session.last_summary = new_summary
+        db.add(session)
+        
     await db.commit()
     
     return {
@@ -125,10 +133,13 @@ async def chat_completion_stream(
             "archive_id": str(session.archive_id),
             "query": content,
             "messages": [{"role": "user", "content": content}],
-            "context_sufficient": True
+            "context_sufficient": True,
+            "last_summary": session.last_summary or "",
+            "response_mode": current_user.settings.get("response_mode", "normal")
         }
         
         full_content = ""
+        new_summary = None
         
         # 使用 astream_events 来监听 LLM 的 token
         async for event in graph.astream_events(initial_state, version="v2"):
@@ -151,19 +162,41 @@ async def chat_completion_stream(
                             chunk = full_content[i:i+5]
                             yield f"data: {json.dumps({'content': chunk})}\n\n"
                             await asyncio.sleep(0.05)
+            
+            # 3. 监听摘要节点
+            elif kind == "on_chain_end" and event["name"] == "summarize":
+                final_out = event["data"].get("output", {})
+                if isinstance(final_out, dict) and "last_summary" in final_out:
+                    new_summary = final_out["last_summary"]
         
-        # 3. 结束后保存完整消息到数据库
+        # 4. 结束后保存完整消息到数据库
         ai_msg = Message(
             session_id=session_id, 
             role="assistant", 
             content=full_content
         )
         db.add(ai_msg)
+        
+        if new_summary:
+            session.last_summary = new_summary
+            db.add(session)
+            
         await db.commit()
         
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    stmt = delete(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    await db.execute(stmt)
+    await db.commit()
+    return {"message": "Session deleted"}
 
 @router.get("/sessions/{session_id}/facts")
 async def get_session_facts(

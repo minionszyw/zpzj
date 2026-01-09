@@ -17,6 +17,7 @@ api.interceptors.request.use((config) => {
 export const authApi = {
   sendCode: (email: string) => api.post('/auth/send-code', { email }),
   login: (email: string, code: string) => api.post('/auth/login', { email, code }),
+  updateUserMe: (data: any) => api.patch('/users/me', data),
 };
 
 export default api;

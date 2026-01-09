@@ -2,8 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { LoginPage } from './features/auth/LoginPage';
 import { Layout } from './components/Layout';
-import { ChatPage } from './features/chat/ChatPage';
-import { ArchiveListPage } from './features/profile/ArchiveListPage';
+import { SessionListPage } from './features/chat/SessionListPage';
+import { ChatWindow } from './features/chat/ChatWindow';
+import { BaziPage } from './features/bazi/BaziPage';
+import { MePage } from './features/profile/MePage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const token = useAuthStore((state) => state.token);
@@ -26,8 +28,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<ChatPage />} />
-          <Route path="archives" element={<ArchiveListPage />} />
+          <Route index element={<SessionListPage />} />
+          <Route path="chat/:sessionId" element={<ChatWindow />} />
+          <Route path="bazi" element={<BaziPage />} />
+          <Route path="me" element={<MePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

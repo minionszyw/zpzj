@@ -27,7 +27,19 @@
 }
 
 body {
+
   margin: 0;
+
   min-width: 320px;
+
   min-height: 100vh;
+
+}
+
+
+
+@utility pb-safe-area-inset-bottom {
+
+  padding-bottom: env(safe-area-inset-bottom);
+
 }
