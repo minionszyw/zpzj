@@ -26,6 +26,8 @@ class EmbeddingService:
 
     @staticmethod
     async def get_query_embedding(text: str) -> List[float]:
+        if not settings.EMBEDDING_API_KEY or "ralitug" in settings.EMBEDDING_API_KEY:
+            return [0.0] * 1024
         headers = {
             "Authorization": f"Bearer {settings.EMBEDDING_API_KEY}",
             "Content-Type": "application/json"

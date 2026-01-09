@@ -52,4 +52,7 @@ async def respond_node(state: AgentState):
     
     response = await llm.ainvoke(messages)
     
-    return {"final_response": response.content}
+    return {
+        "final_response": response.content,
+        "messages": [{"role": "assistant", "content": response.content}]
+    }

@@ -166,6 +166,7 @@ class FortuneExtractor:
         before_start_xiao_yun = []
         
         for i, dy in enumerate(yun.getDaYun()):
+            # 补救 2.2.2: 提取小运
             xiao_yun_objs = []
             for xy in dy.getXiaoYun():
                 xiao_yun_objs.append(XiaoYunData(index=xy.getIndex(), gan_zhi=xy.getGanZhi()))
@@ -177,10 +178,10 @@ class FortuneExtractor:
             ln_list = []
             for ln in dy.getLiuNian():
                 ly_list = []
-                for ly in ln.getLiuYue():
+                for ly_item in ln.getLiuYue():
                     ly_list.append(LiuYueData(
-                        month=ly.getMonth(),
-                        gan_zhi=ly.getGanZhi()
+                        month=ly_item.getIndex() + 1,
+                        gan_zhi=ly_item.getGanZhi()
                     ))
                 ln_list.append(LiuNianData(
                     year=ln.getYear(),
@@ -201,6 +202,7 @@ class FortuneExtractor:
             
         return FortuneData(
             start_solar=re.sub(r"\s(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座", "", yun.getStartSolar().toFullString()),
+            # 补救 2.2.3: 修正起运年龄获取
             start_age=yun.getStartYear() - ctx.solar.getYear() if yun.getStartYear() > 0 else 0,
             da_yun=da_yun_list,
             before_start_xiao_yun=before_start_xiao_yun
