@@ -5,6 +5,8 @@ import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
 import { useDebounce } from '../../hooks/useDebounce';
 import { cn } from '../../utils/cn';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 interface Props {
   isOpen: boolean;
@@ -122,7 +124,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25" />
+          <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -136,33 +138,33 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <div className="flex justify-between items-center mb-4">
-                  <Dialog.Title as="h3" className="text-lg font-bold text-gray-900">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-paper-light dark:bg-stone-900 p-6 shadow-2xl transition-all border border-ink-100 dark:border-ink-800">
+                <div className="flex justify-between items-center mb-6 border-b border-ink-100 dark:border-ink-800 pb-4">
+                  <Dialog.Title as="h3" className="text-lg font-bold font-serif text-ink-900 dark:text-ink-100">
                     {archive ? '编辑档案' : '新建档案'}
                   </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition-colors">
+                  <button onClick={onClose} className="text-ink-400 hover:text-ink-900 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">姓名</label>
-                    <input
-                      type="text"
+                    <label className="block text-xs font-bold text-ink-500 uppercase mb-2">姓名</label>
+                    <Input
                       required
-                      className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
+                      variant="outline"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="bg-white dark:bg-stone-800"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">性别</label>
+                      <label className="block text-xs font-bold text-ink-500 uppercase mb-2">性别</label>
                       <select
-                        className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
+                        className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100"
                         value={formData.gender}
                         onChange={(e) => setFormData({ ...formData, gender: parseInt(e.target.value) })}
                       >
@@ -171,9 +173,9 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">历法</label>
+                      <label className="block text-xs font-bold text-ink-500 uppercase mb-2">历法</label>
                       <select
-                        className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
+                        className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100"
                         value={formData.calendar_type}
                         onChange={(e) => setFormData({ ...formData, calendar_type: e.target.value })}
                       >
@@ -184,19 +186,19 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">出生时间</label>
+                    <label className="block text-xs font-bold text-ink-500 uppercase mb-2">出生时间</label>
                     <input
                       type="datetime-local"
                       step="1"
                       required
-                      className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
+                      className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100"
                       value={formData.birth_time}
                       onChange={(e) => setFormData({ ...formData, birth_time: e.target.value })}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">出生地点 (真太阳时计算关键)</label>
+                    <label className="block text-xs font-bold text-ink-500 uppercase mb-2">出生地点 (自动校正真太阳时)</label>
                     <Combobox
                       value={searchResults.find(l => l.display_name === formData.location_name) || { display_name: formData.location_name, lat: formData.lat, lng: formData.lng }}
                       onChange={(val: any) => {
@@ -211,17 +213,17 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                       }}
                     >
                       <div className="relative mt-1">
-                        <div className="relative w-full cursor-default overflow-hidden rounded-xl border border-gray-200 bg-gray-50 text-left shadow-inner focus-within:ring-2 focus-within:ring-brand-primary sm:text-sm">
+                        <div className="relative w-full cursor-default overflow-hidden rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 text-left shadow-sm focus-within:ring-1 focus-within:ring-brand-accent focus-within:border-brand-accent sm:text-sm">
                           <Combobox.Input
-                            className="w-full border-none py-3 pl-10 pr-10 text-sm leading-5 text-gray-900 bg-transparent focus:ring-0"
+                            className="w-full border-none py-2.5 pl-10 pr-10 text-sm leading-5 text-ink-900 dark:text-ink-100 bg-transparent focus:ring-0 outline-none"
                             displayValue={(loc: any) => loc?.display_name || loc || ''}
                             onChange={(event) => setQuery(event.target.value)}
                           />
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Search className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                            <Search className="h-4 w-4 text-ink-400" aria-hidden="true" />
                           </div>
                           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                            <ChevronsUpDown className="h-4 w-4 text-ink-400" aria-hidden="true" />
                           </Combobox.Button>
                         </div>
                         <Transition
@@ -231,13 +233,13 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                           leaveTo="opacity-0"
                           afterLeave={() => setQuery('')}
                         >
-                          <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-50 border border-gray-100">
+                          <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-stone-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-50 border border-ink-100 dark:border-ink-700">
                             {searching ? (
-                                <div className="relative cursor-default select-none py-2 px-4 text-gray-700 italic">
+                                <div className="relative cursor-default select-none py-2 px-4 text-ink-500 italic">
                                     正在搜索...
                                 </div>
                             ) : searchResults.length === 0 && query !== '' ? (
-                              <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
+                              <div className="relative cursor-default select-none py-2 px-4 text-ink-500">
                                 未找到匹配地点
                               </div>
                             ) : (
@@ -247,7 +249,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                   className={({ active }) =>
                                     cn(
                                       'relative cursor-default select-none py-2.5 pl-10 pr-4',
-                                      active ? 'bg-violet-50 text-brand-primary' : 'text-gray-900'
+                                      active ? 'bg-ink-50 dark:bg-stone-700 text-brand-accent' : 'text-ink-900 dark:text-ink-100'
                                     )
                                   }
                                   value={loc}
@@ -261,7 +263,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                         <span
                                           className={cn(
                                             'absolute inset-y-0 left-0 flex items-center pl-3',
-                                            active ? 'text-brand-primary' : 'text-brand-primary'
+                                            active ? 'text-brand-accent' : 'text-brand-accent'
                                           )}
                                         >
                                           <Check className="h-4 w-4" aria-hidden="true" />
@@ -276,20 +278,20 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                         </Transition>
                       </div>
                     </Combobox>
-                    <div className="mt-1 flex gap-2 text-[10px] text-gray-400 font-mono">
+                    <div className="mt-1 flex gap-4 text-[10px] text-ink-400 font-mono pl-1">
                         <span>Lat: {formData.lat.toFixed(4)}</span>
                         <span>Lng: {formData.lng.toFixed(4)}</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">关系 (如：朋友、客户)</label>
-                    <input
-                      type="text"
-                      className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
+                    <label className="block text-xs font-bold text-ink-500 uppercase mb-2">关系 (如：朋友、客户)</label>
+                    <Input
+                      variant="outline"
                       placeholder="例如：自己、母亲、合伙人"
                       value={formData.relation}
                       onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
+                      className="bg-white dark:bg-stone-800"
                     />
                   </div>
 
@@ -298,19 +300,19 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                     <Disclosure>
                       {({ open }) => (
                         <>
-                          <Disclosure.Button className="flex w-full items-center justify-between rounded-xl bg-gray-50 px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring focus-visible:ring-brand-primary focus-visible:ring-opacity-75 transition-all">
-                            <span className="flex items-center gap-2 font-bold text-xs uppercase text-gray-500">
+                          <Disclosure.Button className="flex w-full items-center justify-between rounded-lg bg-ink-50 dark:bg-stone-800 px-4 py-3 text-left text-sm font-medium hover:bg-ink-100 dark:hover:bg-stone-700 focus:outline-none transition-all">
+                            <span className="flex items-center gap-2 font-bold text-xs uppercase text-ink-500">
                                 <Settings2 size={14} /> 命理算法偏好 (高级)
                             </span>
                             <ChevronRight
-                              className={cn("h-4 w-4 text-gray-400 transition-transform", open && "rotate-90")}
+                              className={cn("h-4 w-4 text-ink-400 transition-transform", open && "rotate-90")}
                             />
                           </Disclosure.Button>
-                          <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-500 space-y-4 border border-gray-100 rounded-b-xl -mt-2 bg-white/50">
+                          <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-ink-500 space-y-4 border-x border-b border-ink-100 dark:border-ink-800 rounded-b-lg -mt-1 bg-white dark:bg-stone-900/50">
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">时间模式</label>
+                                <label className="block text-[10px] font-bold text-ink-400 uppercase mb-1">时间模式</label>
                                 <select
-                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    className="block w-full rounded border-ink-200 dark:border-ink-700 bg-white dark:bg-stone-800 text-xs p-2 border outline-none"
                                     value={formData.algorithms_config.time_mode}
                                     onChange={(e) => setFormData({
                                         ...formData,
@@ -322,9 +324,9 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">定月模式</label>
+                                <label className="block text-[10px] font-bold text-ink-400 uppercase mb-1">定月模式</label>
                                 <select
-                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    className="block w-full rounded border-ink-200 dark:border-ink-700 bg-white dark:bg-stone-800 text-xs p-2 border outline-none"
                                     value={formData.algorithms_config.month_mode}
                                     onChange={(e) => setFormData({
                                         ...formData,
@@ -336,9 +338,9 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">子时模式</label>
+                                <label className="block text-[10px] font-bold text-ink-400 uppercase mb-1">子时模式</label>
                                 <select
-                                    className="block w-full rounded-lg border-gray-200 bg-white text-xs p-2 border"
+                                    className="block w-full rounded border-ink-200 dark:border-ink-700 bg-white dark:bg-stone-800 text-xs p-2 border outline-none"
                                     value={formData.algorithms_config.zi_shi_mode}
                                     onChange={(e) => setFormData({
                                         ...formData,
@@ -359,21 +361,22 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                     <input
                       type="checkbox"
                       id="is_self"
-                      className="h-5 w-5 text-brand-primary focus:ring-brand-primary border-gray-300 rounded-lg shadow-sm"
+                      className="h-4 w-4 text-brand-primary focus:ring-brand-primary border-ink-300 rounded"
                       checked={formData.is_self}
                       onChange={(e) => setFormData({ ...formData, is_self: e.target.checked })}
                     />
-                    <label htmlFor="is_self" className="text-sm font-medium text-gray-700">这是我的档案</label>
+                    <label htmlFor="is_self" className="text-sm font-medium text-ink-700 dark:text-ink-300">这是我的档案</label>
                   </div>
 
-                  <div className="pt-4">
-                    <button
+                  <div className="pt-2">
+                    <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full inline-flex justify-center rounded-xl border border-transparent bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-lg hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                      fullWidth
+                      size="lg"
                     >
                       {loading ? '正在保存...' : '保存档案'}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </Dialog.Panel>

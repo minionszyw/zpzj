@@ -5,10 +5,12 @@ import type { Message } from '../../api/chat';
 import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
 import { MessageSquare, Send, Brain, ChevronLeft } from 'lucide-react';
-import { cn } from '../../utils/cn';
-import ReactMarkdown from 'react-markdown';
 import { MemoryModal } from './MemoryModal';
 import { useAuthStore } from '../../store/useAuthStore';
+import { MessageBubble } from './MessageBubble';
+import { ChatLoading } from './ChatLoading';
+import { Button } from '../../components/ui/Button';
+import { UserAvatar } from '../../components/UserAvatar';
 
 export const ChatWindow: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -19,7 +21,7 @@ export const ChatWindow: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const token = useAuthStore(state => state.token);
+  const { token, user } = useAuthStore(); // Destructure user here
 
   useEffect(() => {
     if (sessionId) {
@@ -61,6 +63,7 @@ export const ChatWindow: React.FC = () => {
       content: '',
       created_at: new Date().toISOString(),
     };
+    
     setMessages(prev => [...prev, aiMsg]);
 
     try {
@@ -115,78 +118,110 @@ export const ChatWindow: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-40 flex flex-col md:relative md:inset-auto md:h-[calc(100vh-8rem)]">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center bg-white p-3 border-b border-gray-100 shadow-sm sticky top-0 z-10 h-14">
+    <div className="fixed inset-0 bg-paper-light z-40 flex flex-col md:relative md:inset-auto md:h-[calc(100vh-2rem)] md:bg-transparent">
+      {/* Top Bar (Mobile Only - Desktop has Sidebar) */}
+      <div className="md:hidden flex justify-between items-center bg-paper-light/80 backdrop-blur-md p-3 border-b border-ink-100 sticky top-0 z-10 h-14">
         <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="p-1 text-gray-400 hover:text-brand-primary transition-colors">
+            <button onClick={() => navigate('/')} className="p-1 text-ink-500 hover:text-ink-900 transition-colors">
                 <ChevronLeft size={24} />
             </button>
             <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[150px]">
+                <span className="text-sm font-bold text-ink-900 leading-tight truncate max-w-[150px] font-serif">
                     {archive?.name || '咨询中...'}
                 </span>
-                <span className="text-[10px] text-gray-400">AI 命理分析</span>
+                <span className="text-[10px] text-ink-400">AI 命理分析</span>
             </div>
         </div>
 
         <button 
             onClick={() => setIsMemoryModalOpen(true)}
-            className="text-gray-400 hover:text-brand-primary p-2 transition-colors"
+            className="text-ink-400 hover:text-brand-accent p-2 transition-colors"
             title="记忆事实"
         >
             <Brain size={20} />
         </button>
       </div>
 
+      {/* Desktop Header Enhancement */}
+      <div className="hidden md:flex justify-between items-center p-4 border-b border-ink-100 bg-white dark:bg-stone-900 rounded-t-xl mx-4 mt-4">
+         <div className="flex items-center gap-3">
+             {archive?.is_self ? (
+                 <UserAvatar avatarUrl={user?.avatar_url} size="md" />
+             ) : (
+                 <div className="w-10 h-10 bg-ink-100 rounded-full flex items-center justify-center font-serif text-lg font-bold text-ink-700">
+                     {archive?.name?.[0] || '客'}
+                 </div>
+             )}
+             <div>
+                 <h2 className="font-serif font-bold text-ink-900">{archive?.name || '命主'}</h2>
+                 <p className="text-xs text-ink-500">
+                    {archive?.location_name ? `${archive.location_name} · ` : ''} 
+                    {archive?.birth_time ? new Date(archive.birth_time).toLocaleDateString() : ''}
+                 </p>
+             </div>
+         </div>
+         <Button variant="ghost" size="sm" onClick={() => setIsMemoryModalOpen(true)}>
+            <Brain size={16} className="mr-2" />
+            记忆库
+         </Button>
+      </div>
+
       {/* Chat Area */}
-      <div className="flex-1 bg-gray-50/30 flex flex-col overflow-hidden relative">
-           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 flex flex-col overflow-hidden relative md:mx-4 md:mb-4 md:bg-white md:dark:bg-stone-900 md:border-x md:border-b md:border-ink-100 md:rounded-b-xl">
+           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
               {messages.length === 0 && !loading && (
-                <div className="text-center text-gray-400 mt-20">
-                   <MessageSquare size={48} className="mx-auto mb-4 opacity-5" />
-                   <p className="text-sm">对 {archive?.name} 的命局进行深度咨询</p>
+                <div className="flex flex-col items-center justify-center h-full text-ink-300">
+                   <div className="w-16 h-16 rounded-full border-2 border-ink-100 flex items-center justify-center mb-4">
+                        <MessageSquare size={32} className="opacity-20" />
+                   </div>
+                   <p className="text-sm font-serif">请描述您想咨询的问题</p>
+                   <p className="text-xs mt-2">例如：“我的财运如何？” “适合往哪个方向发展？”</p>
                 </div>
               )}
+              
               {messages.map((msg) => (
-                <div key={msg.id} className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                    msg.role === 'user' 
-                        ? "ml-auto bg-brand-primary text-white rounded-tr-none shadow-sm" 
-                        : "mr-auto bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-sm"
-                )}>
-                   <div className="prose prose-sm prose-slate max-w-none dark:prose-invert">
-                     <ReactMarkdown>
-                        {msg.content}
-                     </ReactMarkdown>
-                   </div>
-                </div>
+                (msg.content || !loading || msg.role === 'user') && (
+                    <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+                )
               ))}
-              {loading && !messages.find(m => m.role === 'assistant' && m.content !== '') && (
-                <div className="mr-auto bg-white text-gray-400 border border-gray-100 rounded-2xl rounded-tl-none px-4 py-3 text-sm animate-pulse shadow-sm">
-                   正在解析命局...
-                </div>
+
+              {loading && (
+                  <ChatLoading />
               )}
            </div>
            
-           <div className="p-4 border-t border-gray-100 bg-white pb-safe-area-inset-bottom">
-              <div className="relative flex items-center">
-                <input
-                    type="text"
-                    className="flex-1 border border-gray-200 rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-brand-primary bg-gray-50 shadow-inner transition-all text-sm"
-                    placeholder="输入您的问题..."
+           <div className="p-4 bg-paper-light dark:bg-stone-900 border-t border-ink-100 dark:border-ink-800 pb-safe-area-inset-bottom">
+              <div className="relative flex items-end gap-2 bg-white dark:bg-stone-800 border border-ink-200 dark:border-ink-700 rounded-2xl p-2 shadow-inner focus-within:ring-2 focus-within:ring-ink-100 transition-all">
+                <textarea
+                    className="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-2.5 pl-2 text-sm text-ink-900 placeholder:text-ink-300 outline-none"
+                    placeholder="请输入您的问题..."
                     disabled={loading}
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    rows={1}
+                    onChange={(e) => {
+                        setInputValue(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                        }
+                    }}
                 />
                 <button 
                     onClick={handleSendMessage}
                     disabled={!inputValue.trim() || loading}
-                    className="absolute right-2 p-2 text-brand-primary hover:bg-violet-50 rounded-lg disabled:opacity-30 transition-colors"
+                    className="p-2 mb-0.5 bg-ink-900 text-white rounded-xl hover:bg-ink-700 disabled:opacity-50 disabled:bg-ink-200 transition-colors"
                 >
-                    <Send size={20} />
+                    <Send size={18} />
                 </button>
+              </div>
+              <div className="text-center mt-2">
+                 <p className="text-[10px] text-ink-300 transform scale-90">
+                    AI生成内容仅供参考，请理性对待
+                 </p>
               </div>
            </div>
       </div>

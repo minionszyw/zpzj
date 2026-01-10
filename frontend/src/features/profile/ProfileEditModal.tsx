@@ -1,31 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { X, User, Save, Check } from 'lucide-react';
+import { X, Save, Check } from 'lucide-react';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 import { cn } from '../../utils/cn';
+import { AVATAR_MAP, UserAvatar } from '../../components/UserAvatar';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// 默认头像库 (使用简单的背景色和图标组合模拟)
-const DEFAULT_AVATARS = [
-    { id: '1', color: 'bg-blue-500', label: '乾' },
-    { id: '2', color: 'bg-red-500', label: '离' },
-    { id: '3', color: 'bg-green-500', label: '震' },
-    { id: '4', color: 'bg-yellow-500', label: '坤' },
-    { id: '5', color: 'bg-purple-500', label: '巽' },
-    { id: '6', color: 'bg-gray-500', label: '坎' },
-];
-
 export const ProfileEditModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { user, setAuth } = useAuthStore();
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '1');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      setNickname(user.nickname || '');
+      setAvatarUrl(user.avatar_url || '1');
+    }
+  }, [isOpen, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +57,7 @@ export const ProfileEditModal: React.FC<Props> = ({ isOpen, onClose }) => {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -71,64 +71,74 @@ export const ProfileEditModal: React.FC<Props> = ({ isOpen, onClose }) => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-sm transform overflow-hidden rounded-2xl bg-paper-light dark:bg-stone-900 p-6 shadow-2xl transition-all border border-ink-100 dark:border-ink-800">
                 <div className="flex justify-between items-center mb-6">
-                  <Dialog.Title as="h3" className="text-lg font-bold text-gray-900">
+                  <Dialog.Title as="h3" className="text-lg font-bold font-serif text-ink-900 dark:text-ink-100">
                     编辑个人资料
                   </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                  <button onClick={onClose} className="text-ink-400 hover:text-ink-900 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className={cn(
-                        "w-20 h-20 rounded-full flex items-center justify-center shadow-inner text-white text-2xl font-bold transition-all border-4 border-white ring-2 ring-gray-50",
-                        DEFAULT_AVATARS.find(a => a.id === avatarUrl)?.color || 'bg-violet-100 text-brand-primary'
-                    )}>
-                      {DEFAULT_AVATARS.find(a => a.id === avatarUrl)?.label || <User size={40} />}
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  <div className="flex flex-col items-center gap-6">
+                    {/* Preview Large */}
+                    <div className="relative group">
+                        <UserAvatar 
+                            avatarUrl={avatarUrl} 
+                            size="xl" 
+                            className="w-24 h-24 shadow-lg ring-4 ring-white dark:ring-stone-800" 
+                        />
                     </div>
                     
-                    <div className="grid grid-cols-6 gap-2">
-                        {DEFAULT_AVATARS.map((av) => (
+                    {/* Selection Grid */}
+                    <div className="grid grid-cols-6 gap-3">
+                        {Object.entries(AVATAR_MAP).map(([key, config]) => (
                             <button
-                                key={av.id}
+                                key={key}
                                 type="button"
-                                onClick={() => setAvatarUrl(av.id)}
+                                onClick={() => setAvatarUrl(key)}
                                 className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] text-white font-bold transition-all hover:scale-110",
-                                    av.color,
-                                    avatarUrl === av.id ? "ring-2 ring-offset-2 ring-brand-primary" : "opacity-60"
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-sm overflow-hidden border border-ink-100",
+                                    avatarUrl === key 
+                                        ? "ring-2 ring-offset-2 ring-brand-accent scale-110 z-10" 
+                                        : "opacity-70 hover:opacity-100 grayscale-[0.3]"
                                 )}
                             >
-                                {avatarUrl === av.id && <Check size={12} />}
+                                <img src={config.src} alt={config.label} className="w-full h-full object-cover" />
+                                {avatarUrl === key && (
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                        <Check size={16} className="text-white drop-shadow-md" />
+                                    </div>
+                                )}
                             </button>
                         ))}
                     </div>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">选择您的命理化身</p>
+                    <p className="text-[10px] text-ink-400 uppercase font-bold tracking-widest">选择您的命理化身</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">昵称</label>
-                    <input
-                      type="text"
+                    <label className="block text-xs font-bold text-ink-500 uppercase mb-2">昵称</label>
+                    <Input
                       required
+                      variant="outline"
                       placeholder="设置您的雅号"
-                      className="block w-full rounded-xl border-gray-200 bg-gray-50 shadow-inner focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
+                      className="bg-white dark:bg-stone-800"
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-lg hover:bg-violet-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    fullWidth
+                    className="gap-2"
                   >
                     <Save size={18} />
                     {loading ? '正在保存...' : '保存更改'}
-                  </button>
+                  </Button>
                 </form>
               </Dialog.Panel>
             </Transition.Child>

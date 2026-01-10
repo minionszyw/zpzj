@@ -3,9 +3,9 @@ import api from './auth';
 export interface Archive {
   id: string;
   name: string;
-  gender: 'male' | 'female';
+  gender: number; // Changed to number
   birth_time: string;
-  calendar_type: 'solar' | 'lunar';
+  calendar_type: string; // Changed to string (SOLAR/LUNAR)
   lat: number;
   lng: number;
   location_name: string;
@@ -15,7 +15,7 @@ export interface Archive {
 
 export interface ArchiveCreate {
   name: string;
-  gender: string;
+  gender: number;
   birth_time: string;
   calendar_type: string;
   lat: number;
