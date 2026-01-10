@@ -65,20 +65,56 @@ export const BaziChart: React.FC<Props> = ({ data }) => {
       </div>
       
       {/* Additional Info */}
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600 border-t pt-3">
-        <div>
-          <span className="text-gray-400 mr-2">公历:</span>
-          {data.birth_solar_datetime}
+      <div className="mt-4 flex flex-col gap-3 text-sm text-gray-600 border-t pt-3">
+        <div className="flex flex-wrap gap-4">
+            <div>
+                <span className="text-gray-400 mr-2">公历:</span>
+                {data.birth_solar_datetime}
+            </div>
+            <div>
+                <span className="text-gray-400 mr-2">农历:</span>
+                {data.birth_lunar_datetime}
+            </div>
         </div>
-        <div>
-          <span className="text-gray-400 mr-2">农历:</span>
-          {data.birth_lunar_datetime}
-        </div>
-        {data.geju && (
-          <div className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded text-xs font-bold">
-            格局: {data.geju.name}
-          </div>
+
+        {/* San Yuan */}
+        {data.auxiliary && (
+            <div className="flex gap-4 p-3 bg-violet-50/50 rounded-xl border border-violet-100">
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold">胎元</span>
+                    <span className={cn("text-sm font-bold", getElementColor(data.auxiliary.tai_yuan))}>
+                        {data.auxiliary.tai_yuan} <span className="text-[10px] text-gray-400 font-normal">({data.auxiliary.tai_yuan_na_yin})</span>
+                    </span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold">命宫</span>
+                    <span className={cn("text-sm font-bold", getElementColor(data.auxiliary.ming_gong))}>
+                        {data.auxiliary.ming_gong} <span className="text-[10px] text-gray-400 font-normal">({data.auxiliary.ming_gong_na_yin})</span>
+                    </span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold">身宫</span>
+                    <span className={cn("text-sm font-bold", getElementColor(data.auxiliary.shen_gong))}>
+                        {data.auxiliary.shen_gong} <span className="text-[10px] text-gray-400 font-normal">({data.auxiliary.shen_gong_na_yin})</span>
+                    </span>
+                </div>
+            </div>
         )}
+
+        <div className="flex flex-wrap gap-2 items-center">
+            {data.geju && (
+                <div className="bg-violet-600 text-white px-2 py-0.5 rounded text-xs font-bold">
+                    格局: {data.geju.name}
+                </div>
+            )}
+            
+            {/* Stars */}
+            {data.stars && data.stars.length > 0 && data.stars.map((star: any, idx: number) => (
+                <div key={idx} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-medium border border-gray-200">
+                    {star.name}
+                </div>
+            ))}
+        </div>
       </div>
     </div>
   );

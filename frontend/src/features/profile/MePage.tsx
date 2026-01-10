@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ArchiveListPage } from './ArchiveListPage';
-import { User, LogOut, Settings, BookOpen, Info, ShieldCheck, Zap } from 'lucide-react';
+import { User, LogOut, Settings, BookOpen, Info, ShieldCheck, Zap, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { cn } from '../../utils/cn';
+import { ProfileEditModal } from './ProfileEditModal';
+
+// 默认头像配置映射
+const AVATAR_MAP: Record<string, { color: string, label: string }> = {
+    '1': { color: 'bg-blue-500', label: '乾' },
+    '2': { color: 'bg-red-500', label: '离' },
+    '3': { color: 'bg-green-500', label: '震' },
+    '4': { color: 'bg-yellow-500', label: '坤' },
+    '5': { color: 'bg-purple-500', label: '巽' },
+    '6': { color: 'bg-gray-500', label: '坎' },
+};
 
 export const MePage: React.FC = () => {
   const { user, setAuth, logout } = useAuthStore();
@@ -12,6 +23,10 @@ export const MePage: React.FC = () => {
   const [responseMode, setResponseMode] = useState(user?.settings?.response_mode || 'normal');
   const [depth, setDepth] = useState(user?.settings?.depth || 10);
   const [saving, setSaving] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // 获取当前头像样式
+  const currentAvatar = AVATAR_MAP[user?.avatar_url || ''] || { color: 'bg-violet-100', label: '' };
 
   useEffect(() => {
     if (user?.settings) {
@@ -29,9 +44,7 @@ export const MePage: React.FC = () => {
     try {
       setSaving(true);
       const res = await authApi.updateUserMe({ settings: { ...user?.settings, ...newSettings } });
-      // Update local store - assuming setAuth can be used to update user info
       if (user && res.data) {
-          // We need a proper updateUser method in store, but setAuth works if we have the token
           const token = localStorage.getItem('token') || '';
           setAuth(res.data, token);
       }
@@ -112,20 +125,35 @@ export const MePage: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 pb-24 md:pb-8">
       {/* Profile Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4">
-        <div className="w-16 h-16 bg-violet-100 text-brand-primary rounded-full flex items-center justify-center shadow-inner">
-          <User size={32} />
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-2">
+            <button
+                onClick={handleLogout}
+                className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                title="退出登录"
+            >
+                <LogOut size={18} />
+            </button>
         </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-gray-900">{user?.nickname || user?.email.split('@')[0]}</h2>
-          <p className="text-sm text-gray-500">{user?.email}</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+        
+        <div 
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex flex-1 items-center gap-4 cursor-pointer group"
         >
-          <LogOut size={24} />
-        </button>
+            <div className={cn(
+                "w-16 h-16 rounded-full flex items-center justify-center shadow-inner group-hover:ring-4 group-hover:ring-violet-50 transition-all text-white text-xl font-bold",
+                currentAvatar.color
+            )}>
+                {currentAvatar.label || <User size={32} />}
+            </div>
+            <div className="flex-1">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900">{user?.nickname || user?.email.split('@')[0]}</h2>
+                    <Edit2 size={14} className="text-gray-300 group-hover:text-brand-primary transition-colors" />
+                </div>
+                <p className="text-sm text-gray-500">{user?.email}</p>
+            </div>
+        </div>
       </div>
 
       {/* Sections */}
@@ -138,6 +166,11 @@ export const MePage: React.FC = () => {
           {section.component}
         </div>
       ))}
+
+      <ProfileEditModal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+      />
     </div>
   );
 };

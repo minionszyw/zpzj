@@ -84,33 +84,31 @@ class CoreExtractor:
         lunar = ctx.solar.getLunar()
         eight_char = lunar.getEightChar()
         
+        # 应用子时流派
         if ctx.request.zi_shi_mode == ZiShiMode.NEXT_DAY:
             eight_char.setSect(1)
         else:
             eight_char.setSect(2)
             
-        # 显式获取精确干支（干支历，精确到秒/节气时刻）
-        exact_year = lunar.getYearInGanZhiExact()
-        exact_month = lunar.getMonthInGanZhiExact()
-        exact_day = lunar.getDayInGanZhiExact()
-        exact_time = lunar.getTimeInGanZhi()
+        # 统一从 EightChar 获取，以确保 Sect 设置生效
+        y, m, d, t = eight_char.getYear(), eight_char.getMonth(), eight_char.getDay(), eight_char.getTime()
 
-        # 补救 2.1.3: 处理月柱分支模式
+        # 补救 2.1.3: 处理月柱分支模式 (仅当选择农历月定月时覆盖)
         if ctx.request.month_mode == MonthMode.LUNAR_MONTH:
             from lunar_python import LunarYear
             ly = LunarYear.fromYear(lunar.getYear())
             lm = None
-            for m in ly.getMonths():
-                if abs(m.getMonth()) == abs(lunar.getMonth()):
-                    if (lunar.getMonth() < 0 and m.getMonth() < 0) or (lunar.getMonth() > 0 and m.getMonth() > 0):
-                        lm = m
+            for month_obj in ly.getMonths():
+                if abs(month_obj.getMonth()) == abs(lunar.getMonth()):
+                    if (lunar.getMonth() < 0 and month_obj.getMonth() < 0) or (lunar.getMonth() > 0 and month_obj.getMonth() > 0):
+                        lm = month_obj
                         break
             if lm:
-                exact_month = lm.getGanZhi()
+                m = lm.getGanZhi()
 
         return CoreChart(
             year=Column(
-                gan=exact_year[0], zhi=exact_year[1],
+                gan=y[0], zhi=y[1],
                 shi_shen_gan=eight_char.getYearShiShenGan(),
                 shi_shen_zhi=eight_char.getYearShiShenZhi(),
                 hide_gan=eight_char.getYearHideGan(),
@@ -118,7 +116,7 @@ class CoreExtractor:
                 xun_kong=list(eight_char.getYearXunKong())
             ),
             month=Column(
-                gan=exact_month[0], zhi=exact_month[1],
+                gan=m[0], zhi=m[1],
                 shi_shen_gan=eight_char.getMonthShiShenGan(),
                 shi_shen_zhi=eight_char.getMonthShiShenZhi(),
                 hide_gan=eight_char.getMonthHideGan(),
@@ -126,7 +124,7 @@ class CoreExtractor:
                 xun_kong=list(eight_char.getMonthXunKong())
             ),
             day=Column(
-                gan=exact_day[0], zhi=exact_day[1],
+                gan=d[0], zhi=d[1],
                 shi_shen_gan=eight_char.getDayShiShenGan(),
                 shi_shen_zhi=eight_char.getDayShiShenZhi(),
                 hide_gan=eight_char.getDayHideGan(),
@@ -134,7 +132,7 @@ class CoreExtractor:
                 xun_kong=list(eight_char.getDayXunKong())
             ),
             time=Column(
-                gan=exact_time[0], zhi=exact_time[1],
+                gan=t[0], zhi=t[1],
                 shi_shen_gan=eight_char.getTimeShiShenGan(),
                 shi_shen_zhi=eight_char.getTimeShiShenZhi(),
                 hide_gan=eight_char.getTimeHideGan(),
@@ -149,11 +147,18 @@ class CoreExtractor:
             )
         )
 
+
 class FortuneExtractor:
     @staticmethod
     def extract(ctx: BaziContext) -> FortuneData:
         lunar = ctx.solar.getLunar()
         eight_char = lunar.getEightChar()
+        
+        if ctx.request.zi_shi_mode == ZiShiMode.NEXT_DAY:
+            eight_char.setSect(1)
+        else:
+            eight_char.setSect(2)
+            
         yun = eight_char.getYun(ctx.request.gender)
         
         da_yun_list = []
@@ -170,11 +175,25 @@ class FortuneExtractor:
             
             ln_list = []
             for ln in dy.getLiuNian():
+                ly_list = []
+                for ly in ln.getLiuYue():
+                    # 修复：LiuYue 对象在某些版本中可能使用 getMonth 或 getIndex
+                    month_val = 0
+                    try:
+                        month_val = ly.getMonth()
+                    except AttributeError:
+                        month_val = ly.getIndex()
+                        
+                    ly_list.append(LiuYueData(
+                        month=month_val, 
+                        gan_zhi=ly.getGanZhi()
+                    ))
+                
                 ln_list.append(LiuNianData(
                     year=ln.getYear(),
                     gan_zhi=ln.getGanZhi(),
                     xun=ln.getXun(),
-                    liu_yue=[]
+                    liu_yue=ly_list
                 ))
                 
             da_yun_list.append(DaYunData(

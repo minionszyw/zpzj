@@ -29,12 +29,20 @@ class MemoryService:
         """
         
         res = await llm.ainvoke(prompt)
-        # 简单解析，实际应用建议更严谨
         import json
+        import re
+        
+        facts = []
         try:
-            content = res.content.strip("```json").strip()
-            facts = json.loads(content)
-        except:
+            # 改进解析：提取第一个 [ ] 之间的内容
+            json_match = re.search(r'\[.*\]', res.content, re.DOTALL)
+            if json_match:
+                facts = json.loads(json_match.group())
+            else:
+                # 尝试直接解析
+                facts = json.loads(res.content.strip())
+        except Exception as e:
+            print(f"Failed to parse memory facts: {e}, content: {res.content}")
             facts = []
             
         for content in facts:

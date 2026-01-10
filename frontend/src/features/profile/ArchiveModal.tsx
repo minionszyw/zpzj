@@ -198,9 +198,9 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">出生地点 (真太阳时计算关键)</label>
                     <Combobox
-                      value={formData.location_name}
+                      value={searchResults.find(l => l.display_name === formData.location_name) || { display_name: formData.location_name, lat: formData.lat, lng: formData.lng }}
                       onChange={(val: any) => {
-                        if (typeof val === 'string') return;
+                        if (!val) return;
                         setFormData({
                           ...formData,
                           location_name: val.display_name,
@@ -214,7 +214,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                         <div className="relative w-full cursor-default overflow-hidden rounded-xl border border-gray-200 bg-gray-50 text-left shadow-inner focus-within:ring-2 focus-within:ring-brand-primary sm:text-sm">
                           <Combobox.Input
                             className="w-full border-none py-3 pl-10 pr-10 text-sm leading-5 text-gray-900 bg-transparent focus:ring-0"
-                            displayValue={(name: string) => name}
+                            displayValue={(loc: any) => loc?.display_name || loc || ''}
                             onChange={(event) => setQuery(event.target.value)}
                           />
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3">

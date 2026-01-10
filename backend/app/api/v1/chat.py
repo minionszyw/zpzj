@@ -191,6 +191,14 @@ async def chat_completion_stream(
         )
         db.add(ai_msg)
         
+        # 显式触发：事实记忆提取
+        # 此时 full_content 已经完整，手动调用 Service 以确保生效
+        try:
+            full_history = history_msgs + [{"role": "assistant", "content": full_content}]
+            await MemoryService.extract_and_save_facts(db, session.archive_id, full_history)
+        except Exception as e:
+            print(f"Manual memory extraction failed: {e}")
+
         if new_summary:
             from sqlalchemy import update
             await db.execute(

@@ -5,6 +5,7 @@ interface User {
   id: number;
   email: string;
   nickname?: string;
+  avatar_url?: string;
   settings?: {
     depth: number;
     response_mode: 'normal' | 'professional';
