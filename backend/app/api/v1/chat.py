@@ -1,5 +1,6 @@
 from typing import List
 from uuid import UUID
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,7 @@ from app.models.chat import ChatSession, Message
 from app.models.fact import MemoryFact
 from app.agent.graph import build_graph
 from app.services.archive_service import ArchiveService
+from app.services.memory_service import MemoryService
 from sqlalchemy.future import select
 from sqlalchemy import delete
 import json
@@ -78,14 +80,27 @@ async def chat_completion(
     )
     history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
 
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    archive = await ArchiveService.get(db, session.archive_id, current_user.id)
+
     graph = build_graph()
     initial_state = {
         "archive_id": str(session.archive_id),
+        "archive_config": {
+            "name": archive.name,
+            "gender": archive.gender,
+            "birth_time": archive.birth_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "calendar_type": archive.calendar_type,
+            "lat": archive.lat,
+            "lng": archive.lng
+        },
+        "server_time": now,
         "query": content,
         "messages": history_msgs + [{"role": "user", "content": content}],
         "context_sufficient": True,
         "last_summary": session.last_summary or "",
-        "response_mode": current_user.settings.get("response_mode", "normal")
+        "response_mode": current_user.settings.get("response_mode", "normal"),
+        "dialogue_depth": int(current_user.settings.get("depth", 10))
     }
     
     agent_result = await graph.ainvoke(initial_state)
@@ -141,15 +156,28 @@ async def chat_completion_stream(
     )
     history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
 
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    archive = await ArchiveService.get(db, session.archive_id, current_user.id)
+
     async def event_generator():
         graph = build_graph()
         initial_state = {
             "archive_id": str(session.archive_id),
+            "archive_config": {
+                "name": archive.name,
+                "gender": archive.gender,
+                "birth_time": archive.birth_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "calendar_type": archive.calendar_type,
+                "lat": archive.lat,
+                "lng": archive.lng
+            },
+            "server_time": now,
             "query": content,
             "messages": history_msgs, # history_msgs 已经包含了刚才保存的 user_msg
             "context_sufficient": True,
             "last_summary": session.last_summary or "",
-            "response_mode": current_user.settings.get("response_mode", "normal")
+            "response_mode": current_user.settings.get("response_mode", "normal"),
+            "dialogue_depth": int(current_user.settings.get("depth", 10))
         }
         
         full_content = ""
@@ -242,7 +270,15 @@ async def get_session_facts(
         raise HTTPException(status_code=404, detail="Session not found")
         
     result = await db.execute(select(MemoryFact).where(MemoryFact.archive_id == session.archive_id))
-    return result.scalars().all()
+    facts = result.scalars().all()
+    
+    # 处理 numpy 向量序列化问题
+    import numpy as np
+    for fact in facts:
+        if isinstance(fact.embedding, np.ndarray):
+            fact.embedding = fact.embedding.tolist()
+            
+    return facts
 
 @router.delete("/facts/{fact_id}")
 async def delete_fact(

@@ -1,6 +1,7 @@
 import sys
 import os
 from datetime import datetime
+import numpy as np
 
 # 将 zpbz 源代码路径添加到 sys.path
 ENGINE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../zpbz"))
@@ -31,4 +32,20 @@ class BaziService:
         )
         
         result = engine.arrange(request)
-        return result.dict()
+        
+        # 转换 numpy 类型为 python 原生类型以支持 JSON 序列化
+        return BaziService._convert_numpy(result.dict())
+
+    @staticmethod
+    def _convert_numpy(obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: BaziService._convert_numpy(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [BaziService._convert_numpy(i) for i in obj]
+        return obj

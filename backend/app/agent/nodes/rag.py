@@ -16,6 +16,10 @@ async def rag_node(state: AgentState):
     
     knowledge, facts = await asyncio.gather(knowledge_task, facts_task)
     
+    print(f"DEBUG: RAG Node retrieved {len(knowledge)} knowledge chunks and {len(facts)} facts.")
+    for i, f in enumerate(facts):
+        print(f"DEBUG: Fact {i}: {f}")
+    
     return {
         "retrieved_knowledge": knowledge,
         "retrieved_facts": facts

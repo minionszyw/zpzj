@@ -11,11 +11,13 @@ async def summarize_node(state: AgentState):
     摘要节点：当消息数量超过阈值时，对历史消息进行摘要。
     """
     messages = state.get("messages", [])
-    # 调低阈值至 6 条消息 (3 轮对话)，方便测试且更早减少 Token 压力
-    if len(messages) < 6:
+    depth = state.get("dialogue_depth", 10)
+    
+    # 当消息数量达到或超过设定深度时触发摘要
+    if len(messages) < depth:
         return {}
 
-    print(f"DEBUG: Triggering summarization for {len(messages)} messages")
+    print(f"DEBUG: Triggering summarization for {len(messages)} messages (threshold: {depth})")
     
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,

@@ -15,6 +15,7 @@ async def respond_node(state: AgentState):
     facts = state.get("retrieved_facts", [])
     summary = state.get("last_summary", "")
     mode = state.get("response_mode", "normal")
+    server_time = state.get("server_time", "未知")
     
     mode_instruction = ""
     if mode == "professional":
@@ -27,6 +28,9 @@ async def respond_node(state: AgentState):
     你是一个专业的命理分析师“子平真君”。你基于《渊海子平》经典理论进行分析。
     
     {mode_instruction}
+    
+    【服务器当前时间】:
+    {server_time} (请以此时间为基准计算年龄、流年、流月，不要询问用户当前时间)
     
     【核心命盘数据】:
     {bazi_json}

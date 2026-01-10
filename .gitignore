@@ -51,3 +51,6 @@ pnpm-debug.log*
 # Data
 data/processed/
 data/vector_db/
+
+# Playwright MCP
+.playwright-mcp/

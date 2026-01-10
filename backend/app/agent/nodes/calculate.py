@@ -5,6 +5,9 @@ from app.db.session import get_async_session_maker
 from uuid import UUID
 
 async def calculate_node(state: AgentState):
+    if state.get("bazi_result"):
+        return {}
+
     archive_id = state["archive_id"]
     
     # 使用通用的 Session 获取方式

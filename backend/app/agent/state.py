@@ -6,6 +6,9 @@ class AgentState(TypedDict):
     archive_id: str
     archive_config: Dict[str, Any]
     
+    # 服务器当前时间 (时空感知层)
+    server_time: str
+    
     # 原始查询
     query: str
     
@@ -25,6 +28,7 @@ class AgentState(TypedDict):
     messages: Annotated[List[Dict[str, str]], add]
     last_summary: str
     response_mode: str # normal, professional
+    dialogue_depth: int
     
     # 最终输出
     final_response: str
