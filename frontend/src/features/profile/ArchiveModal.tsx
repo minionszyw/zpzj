@@ -1,12 +1,18 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { Dialog, Transition, Combobox, Disclosure } from '@headlessui/react';
-import { X, Check, ChevronsUpDown, Search, ChevronRight, Settings2 } from 'lucide-react';
+import { X, Check, ChevronsUpDown, Search, ChevronRight, Settings2, Calendar } from 'lucide-react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import { zhCN } from 'date-fns/locale/zh-CN';
+import "react-datepicker/dist/react-datepicker.css";
 import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
 import { useDebounce } from '../../hooks/useDebounce';
 import { cn } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+
+// 注册中文语言包
+registerLocale('zh-CN', zhCN);
 
 interface Props {
   isOpen: boolean;
@@ -33,6 +39,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
     }
   });
   
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -54,10 +61,11 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
 
   useEffect(() => {
     if (archive) {
+      const bDate = new Date(archive.birth_time);
       setFormData({
         name: archive.name,
         gender: archive.gender,
-        birth_time: archive.birth_time.slice(0, 16),
+        birth_time: archive.birth_time,
         calendar_type: archive.calendar_type,
         lat: archive.lat,
         lng: archive.lng,
@@ -72,6 +80,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
             ...(archive as any).algorithms_config
         }
       });
+      setSelectedDate(bDate);
       setQuery(archive.location_name);
     } else {
       setFormData({
@@ -90,18 +99,30 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
             zi_shi_mode: 'LATE_ZI_IN_DAY'
         }
       });
+      setSelectedDate(null);
       setQuery('北京市');
     }
   }, [archive, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedDate) {
+        alert('请选择出生时间');
+        return;
+    }
+    
+    // 格式化为后端需要的字符串
+    const payload = {
+        ...formData,
+        birth_time: selectedDate.toISOString()
+    };
+
     try {
       setLoading(true);
       if (archive) {
-        await archiveApi.update(archive.id, formData);
+        await archiveApi.update(archive.id, payload);
       } else {
-        await archiveApi.create(formData);
+        await archiveApi.create(payload);
       }
       onSuccess();
       onClose();
@@ -187,15 +208,25 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
 
                   <div>
                     <label className="block text-xs font-bold text-ink-500 uppercase mb-2">出生时间</label>
-                    <input
-                      type="datetime-local"
-                      lang="zh-CN"
-                      step="1"
-                      required
-                      className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100"
-                      value={formData.birth_time}
-                      onChange={(e) => setFormData({ ...formData, birth_time: e.target.value })}
-                    />
+                    <div className="relative">
+                        <DatePicker
+                            selected={selectedDate}
+                            onChange={(date) => setSelectedDate(date)}
+                            showTimeSelect
+                            timeFormat="HH:mm"
+                            timeIntervals={15}
+                            timeCaption="时间"
+                            dateFormat="yyyy-MM-dd HH:mm"
+                            locale="zh-CN"
+                            placeholderText="点击选择出生时间"
+                            required
+                            className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100 pl-10"
+                            wrapperClassName="w-full"
+                        />
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Calendar size={16} className="text-ink-400" />
+                        </div>
+                    </div>
                   </div>
 
                   <div>
@@ -320,8 +351,8 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                         algorithms_config: { ...formData.algorithms_config, time_mode: e.target.value }
                                     })}
                                 >
-                                    <option value="TRUE_SOLAR">真太阳时 (推荐)</option>
-                                    <option value="MEAN_SOLAR">平太阳时 (北京时间)</option>
+                                    <option value="TRUE_Solar">真太阳时 (推荐)</option>
+                                    <option value="MEAN_Solar">平太阳时 (北京时间)</option>
                                 </select>
                             </div>
                             <div>
@@ -334,7 +365,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                                         algorithms_config: { ...formData.algorithms_config, month_mode: e.target.value }
                                     })}
                                 >
-                                    <option value="SOLAR_TERM">节气定月 (推荐)</option>
+                                    <option value="Solar_TERM">节气定月 (推荐)</option>
                                     <option value="LUNAR_MONTH">农历月定月</option>
                                 </select>
                             </div>
