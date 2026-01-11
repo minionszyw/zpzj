@@ -58,10 +58,17 @@ async def delete_archive(
     return {"message": "Archive deleted"}
 
 @router.get("/{id}/bazi")
+
 async def get_bazi_chart(
+
     id: UUID,
+
     db: AsyncSession = Depends(get_session),
+
     current_user: User = Depends(deps.get_current_user),
+
 ):
+
     archive = await ArchiveService.get(db, id, current_user.id)
-    return BaziService.get_result(archive)
+
+    return await BaziService.get_result(archive)

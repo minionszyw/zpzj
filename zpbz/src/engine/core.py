@@ -47,7 +47,7 @@ class BaziEngine:
     def __init__(self):
         self.preprocessor = Preprocessor()
 
-    def arrange(self, request: BaziRequest) -> BaziResult:
+    def arrange(self, request: BaziRequest, skip_liu_yue: bool = False) -> BaziResult:
         tracer = Tracer()
         
         # 1. 预处理
@@ -59,7 +59,7 @@ class BaziEngine:
         core_chart = CoreExtractor.extract(ctx)
         tracer.record("核心命盘", "四柱提取完成")
         
-        fortune_data = FortuneExtractor.extract(ctx)
+        fortune_data = FortuneExtractor.extract(ctx, skip_liu_yue=skip_liu_yue)
         tracer.record("动态运程", "起运时间与大运计算完成")
         
         auxiliary_chart = AuxiliaryExtractor.extract(ctx)
@@ -125,4 +125,3 @@ class BaziEngine:
             analysis=analysis,
             stars=stars
         )
-

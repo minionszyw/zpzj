@@ -14,6 +14,6 @@ async def calculate_node(state: AgentState):
     SessionLocal = get_async_session_maker()
     async with SessionLocal() as db:
         archive = await ArchiveService.get(db, UUID(archive_id), None)
-        bazi_result = BaziService.get_result(archive)
+        bazi_result = await BaziService.get_result(archive)
         
     return {"bazi_result": bazi_result}

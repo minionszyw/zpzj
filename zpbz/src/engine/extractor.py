@@ -150,7 +150,7 @@ class CoreExtractor:
 
 class FortuneExtractor:
     @staticmethod
-    def extract(ctx: BaziContext) -> FortuneData:
+    def extract(ctx: BaziContext, skip_liu_yue: bool = False) -> FortuneData:
         lunar = ctx.solar.getLunar()
         eight_char = lunar.getEightChar()
         
@@ -176,18 +176,18 @@ class FortuneExtractor:
             ln_list = []
             for ln in dy.getLiuNian():
                 ly_list = []
-                for ly in ln.getLiuYue():
-                    # 修复：LiuYue 对象在某些版本中可能使用 getMonth 或 getIndex
-                    month_val = 0
-                    try:
-                        month_val = ly.getMonth()
-                    except AttributeError:
-                        month_val = ly.getIndex()
-                        
-                    ly_list.append(LiuYueData(
-                        month=month_val, 
-                        gan_zhi=ly.getGanZhi()
-                    ))
+                if not skip_liu_yue:
+                    for ly in ln.getLiuYue():
+                        month_val = 0
+                        try:
+                            month_val = ly.getMonth()
+                        except AttributeError:
+                            month_val = ly.getIndex()
+                            
+                        ly_list.append(LiuYueData(
+                            month=month_val, 
+                            gan_zhi=ly.getGanZhi()
+                        ))
                 
                 ln_list.append(LiuNianData(
                     year=ln.getYear(),

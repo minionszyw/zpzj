@@ -2,6 +2,7 @@ import sys
 import os
 from datetime import datetime
 import numpy as np
+import json
 
 # 将 zpbz 源代码路径添加到 sys.path
 ENGINE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../zpbz"))
@@ -11,10 +12,20 @@ if ENGINE_PATH not in sys.path:
 from src.engine.core import BaziEngine
 from src.engine.models import BaziRequest, Gender, CalendarType, TimeMode, MonthMode, ZiShiMode
 from app.models.archive import Archive
+from app.core.redis import redis_client
 
 class BaziService:
     @staticmethod
-    def get_result(archive: Archive):
+    async def get_result(archive: Archive):
+        # 1. 尝试从缓存获取
+        cache_key = f"bazi_res:{archive.id}:{hash(json.dumps(archive.algorithms_config, sort_keys=True))}"
+        try:
+            cached = await redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception as e:
+            print(f"Redis error: {e}")
+
         engine = BaziEngine()
         
         # 转换模型
@@ -31,10 +42,19 @@ class BaziService:
             zi_shi_mode=ZiShiMode[archive.algorithms_config.get("zi_shi_mode", "LATE_ZI_IN_DAY")]
         )
         
-        result = engine.arrange(request)
+        # 优化：跳过流月计算以加速初始排盘
+        result = engine.arrange(request, skip_liu_yue=True)
         
-        # 转换 numpy 类型为 python 原生类型以支持 JSON 序列化
-        return BaziService._convert_numpy(result.dict())
+        # 转换数据类型以支持 JSON 序列化
+        processed_res = BaziService._convert_numpy(result.dict())
+        
+        # 2. 存入缓存 (有效期 24 小时)
+        try:
+            await redis_client.set(cache_key, json.dumps(processed_res), ex=86400)
+        except Exception as e:
+            print(f"Redis save error: {e}")
+            
+        return processed_res
 
     @staticmethod
     def _convert_numpy(obj):
