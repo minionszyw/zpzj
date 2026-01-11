@@ -19,6 +19,7 @@ pgvector
 langgraph
 langchain
 langchain-openai
+langchain-text-splitters
 aiosqlite
 fakeredis
 python-docx

@@ -5,6 +5,7 @@ from typing import List
 from docx import Document
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.models.knowledge import AncientBook
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 import httpx
@@ -27,7 +28,16 @@ class BookIngestor:
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
 
-    # ... load functions ...
+    def load_docx(self, file_path: str) -> str:
+        doc = Document(file_path)
+        return "\n".join([para.text for para in doc.paragraphs])
+
+    def load_pdf(self, file_path: str) -> str:
+        reader = PdfReader(file_path)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+        return text
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         return await EmbeddingService.get_embeddings(texts)
@@ -46,12 +56,13 @@ class BookIngestor:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
         else:
+            print(f"Unsupported file type: {ext}")
             return
 
         chunks = [c for c in self.text_splitter.split_text(content) if c.strip()]
         print(f"Total chunks to process: {len(chunks)}")
         
-        print("Requesting embeddings from SiliconFlow...")
+        print("Requesting embeddings from API...")
         embeddings = await self.get_embeddings(chunks)
         
         print("Writing to PostgreSQL (pgvector)...")

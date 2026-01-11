@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./zpbz:/app/zpbz
+      - ./data:/app/data
     # 确保 uvicorn 带有 --reload 参数（Dockerfile 中默认已带）
     depends_on:
       - db
