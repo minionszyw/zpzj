@@ -173,7 +173,7 @@ async def chat_completion_stream(
             },
             "server_time": now,
             "query": content,
-            "messages": history_msgs, # history_msgs 已经包含了刚才保存的 user_msg
+            "messages": history_msgs,
             "context_sufficient": True,
             "last_summary": session.last_summary or "",
             "response_mode": current_user.settings.get("response_mode", "normal"),
@@ -182,65 +182,122 @@ async def chat_completion_stream(
         
         full_content = ""
         new_summary = None
+        intent = None
         
-        # 使用 astream_events 来监听 LLM 的 token
-        async for event in graph.astream_events(initial_state, version="v2"):
-            kind = event["event"]
+        # 定义一个函数用于最终保存数据，以便在正常结束或连接断开时都能被调用
+        async def save_to_db(f_content, n_summary, n_intent):
+            if not f_content:
+                return
             
-            # 1. 监听 LLM 流
-            if kind == "on_chat_model_stream" and event["metadata"].get("langgraph_node") == "respond":
-                content_chunk = event["data"]["chunk"].content
-                if content_chunk:
-                    full_content += content_chunk
-                    yield f"data: {json.dumps({'content': content_chunk})}\n\n"
-            
-            # 2. 监听节点结束（用于获取 Mock 模式下的 final_response）
-            elif kind == "on_chain_end" and event["name"] == "respond":
-                if not full_content:
-                    final_out = event["data"].get("output", {})
-                    if isinstance(final_out, dict) and "final_response" in final_out:
-                        full_content = final_out["final_response"]
-                        for i in range(0, len(full_content), 5):
-                            chunk = full_content[i:i+5]
-                            yield f"data: {json.dumps({'content': chunk})}\n\n"
-                            await asyncio.sleep(0.05)
-            
-            # 3. 监听摘要节点
-            elif kind == "on_chain_end" and event["name"] == "summarize":
-                final_out = event["data"].get("output", {})
-                if isinstance(final_out, dict) and "last_summary" in final_out:
-                    new_summary = final_out["last_summary"]
-        
-        # 4. 结束后保存完整消息到数据库
-        ai_msg = Message(
-            session_id=session_id, 
-            role="assistant", 
-            content=full_content
-        )
-        db.add(ai_msg)
-        
-        # 显式触发：事实记忆提取
-        # 此时 full_content 已经完整，手动调用 Service 以确保生效
-        try:
-            full_history = history_msgs + [{"role": "assistant", "content": full_content}]
-            # 获取所有已存在的事实用于提取时的参考（查重）
-            from app.services.knowledge_service import KnowledgeService
-            existing_facts = await KnowledgeService.retrieve_user_facts(session.archive_id, content, limit=20)
-            await MemoryService.extract_and_save_facts(db, session.archive_id, full_history, existing_facts=existing_facts)
-        except Exception as e:
-            print(f"Manual memory extraction failed: {e}")
+            # 使用独立的 session 确保保存操作不受主请求生命周期影响
+            from app.db.session import get_async_session_maker
+            SessionMaker = get_async_session_maker()
+            async with SessionMaker() as bg_db:
+                # 保存 AI 回复
+                ai_msg = Message(
+                    session_id=session_id, 
+                    role="assistant", 
+                    content=f_content,
+                    meta_data={"intent": n_intent}
+                )
+                bg_db.add(ai_msg)
+                
+                # 更新会话摘要
+                if n_summary:
+                    from sqlalchemy import update
+                    await bg_db.execute(
+                        update(ChatSession)
+                        .where(ChatSession.id == session_id)
+                        .values(last_summary=n_summary)
+                    )
+                
+                await bg_db.commit()
+                
+                # 提取并保存记忆
+                try:
+                    full_history = history_msgs + [{"role": "assistant", "content": f_content}]
+                    from app.services.knowledge_service import KnowledgeService
+                    existing_facts = await KnowledgeService.retrieve_user_facts(session.archive_id, content, limit=20)
+                    await MemoryService.extract_and_save_facts(bg_db, session.archive_id, full_history, existing_facts=existing_facts)
+                except Exception as e:
+                    print(f"Background memory extraction failed: {e}")
 
-        if new_summary:
-            from sqlalchemy import update
-            await db.execute(
-                update(ChatSession)
-                .where(ChatSession.id == session_id)
-                .values(last_summary=new_summary)
-            )
-            
-        await db.commit()
+        # 核心逻辑封装，支持在 GeneratorExit 时继续运行
+        queue = asyncio.Queue()
         
-        yield "data: [DONE]\n\n"
+        async def run_graph():
+            nonlocal full_content, new_summary, intent
+            # 记录上一次 respond 节点结束时的内容，用于避免重复发送
+            last_node_content = ""
+            
+            try:
+                print(f"Starting graph execution for session {session_id}")
+                async for event in graph.astream_events(initial_state, version="v2"):
+                    kind = event["event"]
+                    name = event["name"]
+                    metadata = event.get("metadata", {})
+                    node = metadata.get("langgraph_node")
+                    
+                    if kind == "on_chat_model_stream" and node == "respond":
+                        chunk = event["data"]["chunk"].content
+                        if chunk:
+                            full_content += chunk
+                            await queue.put(json.dumps({"content": chunk}))
+                    
+                    elif kind == "on_tool_start":
+                        print(f"--- Tool execution started: {name} ---")
+                        await queue.put(json.dumps({"status": "thinking", "message": "正在调动命理工具查询..."}))
+
+                    elif kind == "on_tool_end":
+                        print(f"--- Tool execution finished: {name} ---")
+
+                    elif kind == "on_chain_end" and (name == "respond" or node == "respond"):
+                        final_out = event["data"].get("output", {})
+                        if isinstance(final_out, dict) and "final_response" in final_out:
+                            node_content = final_out["final_response"]
+                            if node_content:
+                                print(f"--- Respond node finished. Content length: {len(node_content)} ---")
+                                # 只有在没有通过 stream 发送过完全相同内容时才发送
+                                if node_content != last_node_content:
+                                    if not full_content.endswith(node_content):
+                                        await queue.put(json.dumps({"content": node_content}))
+                                        full_content += node_content
+                                    last_node_content = node_content
+                    
+                    elif kind == "on_chain_end" and name == "intent":
+                        final_out = event["data"].get("output", {})
+                        if isinstance(final_out, dict):
+                            intent = final_out.get("intent")
+                    
+                    elif kind == "on_chain_end" and name == "summarize":
+                        final_out = event["data"].get("output", {})
+                        if isinstance(final_out, dict) and "last_summary" in final_out:
+                            new_summary = final_out["last_summary"]
+                
+                print(f"Graph execution completed. Saving {len(full_content)} chars.")
+                await save_to_db(full_content, new_summary, intent)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"Graph execution error: {e}")
+                await queue.put(json.dumps({"error": f"内部处理错误: {str(e)}"}))
+            finally:
+                await queue.put("[DONE]")
+
+        # 启动后台任务运行 Graph
+        task = asyncio.create_task(run_graph())
+
+        try:
+            while True:
+                data = await queue.get()
+                if data == "[DONE]":
+                    break
+                yield f"data: {data}\n\n"
+        except GeneratorExit:
+            print(f"Client disconnected, session {session_id} will continue in background.")
+        except Exception as e:
+            print(f"Streaming error: {e}")
+            task.cancel()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

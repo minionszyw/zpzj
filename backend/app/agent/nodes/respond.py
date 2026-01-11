@@ -7,13 +7,16 @@ import json
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage, ToolMessage
 
 async def respond_node(state: AgentState):
+    print(f"--- Entering respond_node, mode: {state.get('response_mode')} ---")
     # 绑定工具
     tools = [query_fortune_details]
+    print(f"--- Binding {len(tools)} tools to LLM ---")
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
         api_key=settings.LLM_API_KEY,
         base_url=settings.LLM_API_BASE,
-        temperature=0 # 降低温度以提高工具调用稳定性
+        temperature=0, # 降低温度以提高工具调用稳定性
+        streaming=True
     ).bind_tools(tools)
     
     # 核心数据精简
@@ -44,11 +47,11 @@ async def respond_node(state: AgentState):
 
     # 工具使用指引
     tool_instruction = """
-    【强制工具指令】:
+    【！！！核心指令：查询流年必须使用工具！！！】:
     1. 你手中的【核心命盘数据】中 fortune.da_yun 仅包含大运概览，没有任何具体的流年（Liu Nian）或流月（Liu Yue）详情。
-    2. 如果用户询问具体年份（如 2025年、明年、2030年等）的运势，你必须通过调用 `query_fortune_details` 工具来获取详情。
-    3. 严禁在未调用工具的情况下告诉用户你需要查询，直接调用工具即可。
-    4. 获取工具返回的 JSON 详情后，再进行深入分析。
+    2. 如果用户询问特定年份（如 2025年、2026年、2027年等）的运势或回顾，你必须、必须、必须通过调用 `query_fortune_details` 工具来获取该年份的干支和流月详情。
+    3. 即使该年份是过去或现在，也请调用工具获取准确的干支信息再进行分析。
+    4. 严禁自行推算，严禁只给一段开场白而不调用工具。
     """
 
     # 策略：利用 Prompt Caching，强制置顶核心数据
@@ -68,7 +71,7 @@ async def respond_node(state: AgentState):
     【已知事实】:
     {facts}
     
-    【前情提要】:
+    【前情提提要】:
     {summary}
     
     【古籍参考】:
@@ -99,7 +102,14 @@ async def respond_node(state: AgentState):
     
     messages = [SystemMessage(content=system_prompt)] + formatted_messages
     
+    print(f"--- Sending {len(messages)} messages to LLM (History length: {len(formatted_messages)}) ---")
+    
     response = await llm.ainvoke(messages)
+    
+    if response.tool_calls:
+        print(f"--- LLM generated {len(response.tool_calls)} tool calls: {[tc['name'] for tc in response.tool_calls]} ---")
+    else:
+        print(f"--- LLM did NOT generate any tool calls. Content: {response.content[:50]} ---")
     
     return {
         "final_response": response.content,

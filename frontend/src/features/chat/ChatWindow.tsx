@@ -17,6 +17,7 @@ export const ChatWindow: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState<string | null>(null);
   const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { token } = useAuthStore(); // Removed unused 'user'
@@ -63,6 +64,7 @@ export const ChatWindow: React.FC = () => {
     };
     
     setMessages(prev => [...prev, aiMsg]);
+    setThinkingMessage(null);
 
     try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'}/chat/completions/stream?session_id=${sessionId}&content=${encodeURIComponent(userMsg.content)}`, {
@@ -94,7 +96,10 @@ export const ChatWindow: React.FC = () => {
                     if (data === '[DONE]') break;
                     try {
                         const parsed = JSON.parse(data);
-                        if (parsed.content) {
+                        if (parsed.status === 'thinking') {
+                            setThinkingMessage(parsed.message || '正在思考...');
+                        } else if (parsed.content) {
+                            setThinkingMessage(null); // 开始有内容输出，清除思考状态
                             fullContent += parsed.content;
                             setMessages(prev => prev.map(m => 
                                 m.id === aiMsgId ? { ...m, content: fullContent } : m
@@ -112,6 +117,7 @@ export const ChatWindow: React.FC = () => {
       ));
     } finally {
       setLoading(false);
+      setThinkingMessage(null);
     }
   };
 
@@ -153,13 +159,13 @@ export const ChatWindow: React.FC = () => {
               )}
               
               {messages.map((msg) => (
-                (msg.content || !loading || msg.role === 'user') && (
+                (msg.content || (loading && msg.role === 'assistant') || msg.role === 'user') && (
                     <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
                 )
               ))}
 
               {loading && (
-                  <ChatLoading />
+                  <ChatLoading message={thinkingMessage} />
               )}
            </div>
            

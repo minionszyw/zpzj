@@ -2,6 +2,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 from datetime import datetime
 from sqlmodel import SQLModel, Field, Column, JSON
+from sqlalchemy import ForeignKey
 
 class ArchiveBase(SQLModel):
     name: str
@@ -25,6 +26,12 @@ class ArchiveBase(SQLModel):
 class Archive(ArchiveBase, table=True):
     __tablename__ = "archives"
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    user_id: UUID = Field(foreign_key="users.id", index=True)
+    user_id: UUID = Field(
+        sa_column=Column(
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True
+        )
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
