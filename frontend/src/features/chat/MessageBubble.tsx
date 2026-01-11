@@ -20,8 +20,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content }) =
       {/* Assistant Avatar (Left) */}
       {!isUser && (
         <div className="flex-shrink-0 mt-1">
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-ink-200 bg-white flex items-center justify-center overflow-hidden">
-             <div className="w-6 h-6 rounded-sm border border-brand-accent flex items-center justify-center rotate-45 scale-75">
+          <div className="w-10 h-10 rounded-full border border-ink-200 bg-white flex items-center justify-center overflow-hidden shadow-sm">
+             <div className="w-6 h-6 rounded-sm border border-brand-accent flex items-center justify-center rotate-45 scale-90">
                  <span className="text-brand-accent font-serif font-bold -rotate-45 text-[10px]">真</span>
              </div>
           </div>
