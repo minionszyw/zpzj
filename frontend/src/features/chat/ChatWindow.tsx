@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { chatApi } from '../../api/chat';
-import type { Message } from '../../api/chat';
 import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
 import { MessageSquare, Send, Brain, ChevronLeft } from 'lucide-react';
 import { MemoryModal } from './MemoryModal';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useChatStore } from '../../store/useChatStore';
 import { MessageBubble } from './MessageBubble';
 import { ChatLoading } from './ChatLoading';
 
@@ -14,25 +14,27 @@ export const ChatWindow: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const [archive, setArchive] = useState<Archive | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [thinkingMessage, setThinkingMessage] = useState<string | null>(null);
   const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { token } = useAuthStore(); // Removed unused 'user'
+  const { token } = useAuthStore();
+  
+  const { sessions, fetchMessages, sendMessage, initSession } = useChatStore();
+  const currentSession = sessionId ? sessions[sessionId] : null;
+  const messages = currentSession?.messages || [];
+  const isStreaming = currentSession?.isStreaming || false;
+  const thinkingMessage = currentSession?.thinkingMessage || null;
 
   useEffect(() => {
     if (sessionId) {
+      initSession(sessionId);
       chatApi.listSessions().then((res) => {
         const s = res.data.find(it => it.id === sessionId);
         if (s) {
           archiveApi.get(s.archive_id).then(res => setArchive(res.data));
         }
       });
-      chatApi.getMessages(sessionId).then((res) => {
-        setMessages(res.data);
-      });
+      fetchMessages(sessionId);
     }
   }, [sessionId]);
 
@@ -40,85 +42,13 @@ export const ChatWindow: React.FC = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, loading]);
+  }, [messages, isStreaming, thinkingMessage]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || !sessionId) return;
-    
-    const userMsg: Message = { 
-        id: Date.now().toString(), 
-        role: 'user', 
-        content: inputValue, 
-        created_at: new Date().toISOString() 
-    };
-    setMessages(prev => [...prev, userMsg]);
+    if (!inputValue.trim() || !sessionId || !token) return;
+    const content = inputValue;
     setInputValue('');
-    setLoading(true);
-
-    const aiMsgId = (Date.now() + 1).toString();
-    const aiMsg: Message = {
-      id: aiMsgId,
-      role: 'assistant',
-      content: '',
-      created_at: new Date().toISOString(),
-    };
-    
-    setMessages(prev => [...prev, aiMsg]);
-    setThinkingMessage(null);
-
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'}/chat/completions/stream?session_id=${sessionId}&content=${encodeURIComponent(userMsg.content)}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
-        }
-
-        if (!response.body) throw new Error('No response body');
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.status === 'thinking') {
-                            setThinkingMessage(parsed.message || '正在思考...');
-                        } else if (parsed.content) {
-                            setThinkingMessage(null); // 开始有内容输出，清除思考状态
-                            fullContent += parsed.content;
-                            setMessages(prev => prev.map(m => 
-                                m.id === aiMsgId ? { ...m, content: fullContent } : m
-                            ));
-                        }
-                    } catch (e) {
-                    }
-                }
-            }
-        }
-    } catch (err) {
-      console.error('Failed to send message', err);
-      setMessages(prev => prev.map(m => 
-        m.id === aiMsgId ? { ...m, content: '⚠️ 咨询服务暂时不可用，可能是网络波动或系统正在维护，请稍后重试。' } : m
-      ));
-    } finally {
-      setLoading(false);
-      setThinkingMessage(null);
-    }
+    await sendMessage(sessionId, content, token);
   };
 
   return (
@@ -148,7 +78,7 @@ export const ChatWindow: React.FC = () => {
       {/* Chat Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
-              {messages.length === 0 && !loading && (
+              {messages.length === 0 && !isStreaming && (
                 <div className="flex flex-col items-center justify-center h-full text-ink-300">
                    <div className="w-16 h-16 rounded-full border-2 border-ink-100 flex items-center justify-center mb-4">
                         <MessageSquare size={32} className="opacity-20" />
@@ -159,12 +89,12 @@ export const ChatWindow: React.FC = () => {
               )}
               
               {messages.map((msg) => (
-                (msg.content || (loading && msg.role === 'assistant') || msg.role === 'user') && (
+                (msg.content || (isStreaming && msg.role === 'assistant') || msg.role === 'user') && (
                     <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
                 )
               ))}
 
-              {loading && (
+              {isStreaming && (
                   <ChatLoading message={thinkingMessage} />
               )}
            </div>
@@ -174,7 +104,7 @@ export const ChatWindow: React.FC = () => {
                 <textarea
                     className="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-2.5 pl-2 text-sm text-ink-900 placeholder:text-ink-300 outline-none"
                     placeholder="请输入您的问题..."
-                    disabled={loading}
+                    disabled={isStreaming}
                     value={inputValue}
                     rows={1}
                     onChange={(e) => {
@@ -191,7 +121,7 @@ export const ChatWindow: React.FC = () => {
                 />
                 <button 
                     onClick={handleSendMessage}
-                    disabled={!inputValue.trim() || loading}
+                    disabled={!inputValue.trim() || isStreaming}
                     className="p-2 mb-0.5 bg-ink-900 text-white rounded-xl hover:bg-ink-700 disabled:opacity-50 disabled:bg-ink-200 transition-colors"
                 >
                     <Send size={18} />
