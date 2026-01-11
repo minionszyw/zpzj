@@ -12,7 +12,6 @@ def query_fortune_details(start_year: int, end_year: int, state: Annotated[dict,
         start_year: 开始年份 (int)
         end_year: 结束年份 (int)
     """
-    print(f"--- Tool query_fortune_details called: {start_year} to {end_year} ---")
     bazi_result = state.get("bazi_result")
     if not bazi_result:
         return "未找到命盘数据。"
@@ -22,7 +21,8 @@ def query_fortune_details(start_year: int, end_year: int, state: Annotated[dict,
     da_yun_list = fortune.get("da_yun", [])
     
     for dy in da_yun_list:
-        for ln in dy.get("liu_nian", []):
+        ln_list = dy.get("liu_nian", [])
+        for ln in ln_list:
             year = ln.get("year")
             if start_year <= year <= end_year:
                 # 构造简洁的返回结构，减少 Token

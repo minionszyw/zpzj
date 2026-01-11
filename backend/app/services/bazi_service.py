@@ -38,12 +38,18 @@ class BaziService:
 
     @staticmethod
     def _convert_numpy(obj):
+        import uuid
+        from datetime import datetime
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         elif isinstance(obj, np.integer):
             return int(obj)
         elif isinstance(obj, np.floating):
             return float(obj)
+        elif isinstance(obj, uuid.UUID):
+            return str(obj)
+        elif isinstance(obj, datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
         elif isinstance(obj, dict):
             return {k: BaziService._convert_numpy(v) for k, v in obj.items()}
         elif isinstance(obj, list):

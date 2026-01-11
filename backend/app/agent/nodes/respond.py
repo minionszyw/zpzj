@@ -5,12 +5,11 @@ from app.services.bazi_service import BaziService
 from app.agent.tools.fortune import query_fortune_details
 import json
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 
-async def respond_node(state: AgentState):
-    print(f"--- Entering respond_node, mode: {state.get('response_mode')} ---")
+async def respond_node(state: AgentState, config: RunnableConfig):
     # 绑定工具
     tools = [query_fortune_details]
-    print(f"--- Binding {len(tools)} tools to LLM ---")
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
         api_key=settings.LLM_API_KEY,
@@ -51,7 +50,7 @@ async def respond_node(state: AgentState):
     1. 你手中的【核心命盘数据】中 fortune.da_yun 仅包含大运概览，没有任何具体的流年（Liu Nian）或流月（Liu Yue）详情。
     2. 如果用户询问特定年份（如 2025年、2026年、2027年等）的运势或回顾，你必须、必须、必须通过调用 `query_fortune_details` 工具来获取该年份的干支和流月详情。
     3. 即使该年份是过去或现在，也请调用工具获取准确的干支信息再进行分析。
-    4. 严禁自行推算，严禁只给一段开场白而不调用工具。
+    4. 严禁自行推算，严禁在未调用工具的情况下分析具体流年，严禁只给一段开场白而不调用工具。
     """
 
     # 策略：利用 Prompt Caching，强制置顶核心数据
@@ -102,14 +101,7 @@ async def respond_node(state: AgentState):
     
     messages = [SystemMessage(content=system_prompt)] + formatted_messages
     
-    print(f"--- Sending {len(messages)} messages to LLM (History length: {len(formatted_messages)}) ---")
-    
-    response = await llm.ainvoke(messages)
-    
-    if response.tool_calls:
-        print(f"--- LLM generated {len(response.tool_calls)} tool calls: {[tc['name'] for tc in response.tool_calls]} ---")
-    else:
-        print(f"--- LLM did NOT generate any tool calls. Content: {response.content[:50]} ---")
+    response = await llm.ainvoke(messages, config)
     
     return {
         "final_response": response.content,
