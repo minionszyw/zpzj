@@ -23,11 +23,25 @@ async def respond_node(state: AgentState):
     else:
         mode_instruction = "当前处于【普通模式】：请使用通俗易懂的语言，侧重于心理疏导和行动建议，避免过多的生僻术语。"
 
+    # 交互式诊断逻辑增强
+    diagnosis_instruction = ""
+    if not state.get("context_sufficient", True):
+        needed = ", ".join(state.get("needed_info", []))
+        diagnosis_instruction = f"""
+        【重要：交互式诊断模式】
+        当前上下文信息不足以给出高质量分析。你需要：
+        1. 礼貌地告知用户，为了提供更精准的{state.get('intent', '分析')}，需要了解更多背景信息。
+        2. 解释为什么这些信息重要（例如：事业分析需要结合当下的职业环境来判断先天格局如何落地）。
+        3. 明确列出需要用户补充的信息：{needed}。
+        4. 在用户补充前，不要进行深度推演，仅做初步的命理解读。
+        """
+
     # 策略：利用 Prompt Caching，强制置顶核心数据
     system_prompt = f"""
     你是一个专业的命理分析师“子平真君”。你基于《渊海子平》经典理论进行分析。
     
     {mode_instruction}
+    {diagnosis_instruction}
     
     【服务器当前时间】:
     {server_time} (请以此时间为基准计算年龄、流年、流月，不要询问用户当前时间)
@@ -47,7 +61,7 @@ async def respond_node(state: AgentState):
     分析准则：
     1. 计算与分析分离：严禁自行推算干支，必须以【核心命盘数据】为准。
     2. 如果当前模式是专业模式（基于用户偏好），请大幅增加对古籍原文的引用。
-    3. 如果意图不是“综合”分析，或者上下文不足，请侧重于引导用户补充背景信息。
+    3. 如果正处于“交互式诊断模式”，请严格遵守该模式的引导指令。
     """
     
     messages = [

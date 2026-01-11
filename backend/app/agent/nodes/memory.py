@@ -18,7 +18,7 @@ async def memory_node(state: AgentState):
         SessionLocal = get_async_session_maker()
         async with SessionLocal() as db:
             new_facts = await MemoryService.extract_and_save_facts(
-                db, archive_id, full_messages
+                db, archive_id, full_messages, existing_facts=state.get("retrieved_facts", [])
             )
             return {"retrieved_facts": state.get("retrieved_facts", []) + new_facts}
     

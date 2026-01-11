@@ -62,11 +62,11 @@ export const MePage: React.FC = () => {
                 className={cn(
                     "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
                     responseMode === 'normal' 
-                        ? "border-brand-primary bg-ink-50 text-brand-primary" 
-                        : "border-ink-50 bg-white dark:bg-stone-800 text-ink-400 dark:border-ink-700"
+                        ? "border-brand-accent bg-brand-accent/5 text-brand-accent shadow-sm" 
+                        : "border-ink-100 bg-white dark:bg-stone-900 text-ink-400 dark:border-ink-700 hover:border-ink-200"
                 )}
               >
-                <ShieldCheck size={24} />
+                <ShieldCheck size={24} className={cn(responseMode === 'normal' ? "text-brand-accent" : "text-ink-300")} />
                 <span className="text-sm font-bold">普通模式</span>
                 <span className="text-[10px] opacity-70">通俗易懂，重心理</span>
               </button>
@@ -78,11 +78,11 @@ export const MePage: React.FC = () => {
                 className={cn(
                     "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
                     responseMode === 'professional' 
-                        ? "border-brand-primary bg-ink-50 text-brand-primary" 
-                        : "border-ink-50 bg-white dark:bg-stone-800 text-ink-400 dark:border-ink-700"
+                        ? "border-brand-accent bg-brand-accent/5 text-brand-accent shadow-sm" 
+                        : "border-ink-100 bg-white dark:bg-stone-900 text-ink-400 dark:border-ink-700 hover:border-ink-200"
                 )}
               >
-                <Zap size={24} />
+                <Zap size={24} className={cn(responseMode === 'professional' ? "text-brand-accent" : "text-ink-300")} />
                 <span className="text-sm font-bold">专业模式</span>
                 <span className="text-[10px] opacity-70">学术深挖，重古籍</span>
               </button>

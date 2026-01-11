@@ -12,7 +12,7 @@ async def rag_node(state: AgentState):
     
     # 并发检索以提升性能
     knowledge_task = KnowledgeService.retrieve_ancient_books(query)
-    facts_task = KnowledgeService.retrieve_user_facts(UUID(archive_id), query)
+    facts_task = KnowledgeService.retrieve_user_facts(UUID(archive_id), query, limit=10)
     
     knowledge, facts = await asyncio.gather(knowledge_task, facts_task)
     

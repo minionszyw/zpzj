@@ -28,10 +28,14 @@ class KnowledgeService:
         
         SessionLocal = get_async_session_maker()
         async with SessionLocal() as session:
+            # 权重逻辑：相似度 * 时间衰减系数
+            # 衰减公式：0.99 ^ (天数)，每天衰减 1%
             query_sql = text("""
-                SELECT content FROM memory_facts 
+                SELECT content, created_at,
+                (1 - (embedding <=> :vector)) * pow(0.99, EXTRACT(DAY FROM (CURRENT_TIMESTAMP - created_at))) as weight_score
+                FROM memory_facts 
                 WHERE archive_id = :archive_id
-                ORDER BY embedding <=> :vector
+                ORDER BY weight_score DESC
                 LIMIT :limit
             """)
             result = await session.execute(query_sql, {
@@ -39,4 +43,5 @@ class KnowledgeService:
                 "vector": vector_str, 
                 "limit": limit
             })
-            return [row[0] for row in result.fetchall()]
+            # 返回带时间戳的事实，增强 AI 对“时效性”的感知
+            return [f"[{row[1].strftime('%Y-%m-%d')}] {row[0]}" for row in result.fetchall()]

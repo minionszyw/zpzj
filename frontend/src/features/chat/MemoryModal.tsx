@@ -70,7 +70,7 @@ export const MemoryModal: React.FC<Props> = ({ isOpen, onClose, sessionId }) => 
               <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
                 <div className="flex justify-between items-center mb-6">
                   <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
-                    <Brain className="text-brand-primary" /> AI 事实记忆
+                    <Brain className="text-brand-primary" /> 事实记忆
                   </Dialog.Title>
                   <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                     <X size={20} />

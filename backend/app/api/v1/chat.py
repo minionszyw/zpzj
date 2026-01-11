@@ -223,7 +223,10 @@ async def chat_completion_stream(
         # 此时 full_content 已经完整，手动调用 Service 以确保生效
         try:
             full_history = history_msgs + [{"role": "assistant", "content": full_content}]
-            await MemoryService.extract_and_save_facts(db, session.archive_id, full_history)
+            # 获取所有已存在的事实用于提取时的参考（查重）
+            from app.services.knowledge_service import KnowledgeService
+            existing_facts = await KnowledgeService.retrieve_user_facts(session.archive_id, content, limit=20)
+            await MemoryService.extract_and_save_facts(db, session.archive_id, full_history, existing_facts=existing_facts)
         except Exception as e:
             print(f"Manual memory extraction failed: {e}")
 
