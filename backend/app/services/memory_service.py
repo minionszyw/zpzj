@@ -16,7 +16,16 @@ class MemoryService:
             temperature=0
         )
         
-        history_text = "\n".join([f"{m['role']}: {m['content']}" for m in messages[-5:]])
+        history_parts = []
+        for m in messages[-5:]:
+            if isinstance(m, dict):
+                role = m.get("role", "unknown")
+                content = m.get("content", "")
+            else:
+                role = getattr(m, "type", "unknown")
+                content = getattr(m, "content", "")
+            history_parts.append(f"{role}: {content}")
+        history_text = "\n".join(history_parts)
         existing_facts_text = "\n".join(existing_facts) if existing_facts else "暂无"
         
         prompt = f"""

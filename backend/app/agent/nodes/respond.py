@@ -1,16 +1,26 @@
 from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from app.agent.state import AgentState
+from app.services.bazi_service import BaziService
+from app.agent.tools.fortune import query_fortune_details
+import json
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage, ToolMessage
 
 async def respond_node(state: AgentState):
+    # 绑定工具
+    tools = [query_fortune_details]
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
         api_key=settings.LLM_API_KEY,
         base_url=settings.LLM_API_BASE,
-        temperature=0.7
-    )
+        temperature=0 # 降低温度以提高工具调用稳定性
+    ).bind_tools(tools)
     
-    bazi_json = state.get("bazi_result", "{}")
+    # 核心数据精简
+    full_bazi = state.get("bazi_result", {})
+    essential_bazi = BaziService.get_essential_data(full_bazi) if full_bazi else {}
+    bazi_json = json.dumps(essential_bazi, ensure_ascii=False)
+    
     knowledge = state.get("retrieved_knowledge", [])
     facts = state.get("retrieved_facts", [])
     summary = state.get("last_summary", "")
@@ -29,12 +39,17 @@ async def respond_node(state: AgentState):
         needed = ", ".join(state.get("needed_info", []))
         diagnosis_instruction = f"""
         【重要：交互式诊断模式】
-        当前上下文信息不足以给出高质量分析。你需要：
-        1. 礼貌地告知用户，为了提供更精准的{state.get('intent', '分析')}，需要了解更多背景信息。
-        2. 解释为什么这些信息重要（例如：事业分析需要结合当下的职业环境来判断先天格局如何落地）。
-        3. 明确列出需要用户补充的信息：{needed}。
-        4. 在用户补充前，不要进行深度推演，仅做初步的命理解读。
+        当前上下文信息不足以给出高质量分析。你需要明确列出需要用户补充的信息：{needed}。
         """
+
+    # 工具使用指引
+    tool_instruction = """
+    【强制工具指令】:
+    1. 你手中的【核心命盘数据】中 fortune.da_yun 仅包含大运概览，没有任何具体的流年（Liu Nian）或流月（Liu Yue）详情。
+    2. 如果用户询问具体年份（如 2025年、明年、2030年等）的运势，你必须通过调用 `query_fortune_details` 工具来获取详情。
+    3. 严禁在未调用工具的情况下告诉用户你需要查询，直接调用工具即可。
+    4. 获取工具返回的 JSON 详情后，再进行深入分析。
+    """
 
     # 策略：利用 Prompt Caching，强制置顶核心数据
     system_prompt = f"""
@@ -42,6 +57,7 @@ async def respond_node(state: AgentState):
     
     {mode_instruction}
     {diagnosis_instruction}
+    {tool_instruction}
     
     【服务器当前时间】:
     {server_time} (请以此时间为基准计算年龄、流年、流月，不要询问用户当前时间)
@@ -61,16 +77,31 @@ async def respond_node(state: AgentState):
     分析准则：
     1. 计算与分析分离：严禁自行推算干支，必须以【核心命盘数据】为准。
     2. 如果当前模式是专业模式（基于用户偏好），请大幅增加对古籍原文的引用。
-    3. 如果正处于“交互式诊断模式”，请严格遵守该模式的引导指令。
     """
     
-    messages = [
-        {"role": "system", "content": system_prompt}
-    ] + state["messages"]
+    # 格式化消息历史，确保兼容字典和 BaseMessage 对象
+    raw_messages = state.get("messages", [])
+    formatted_messages = []
+    for m in raw_messages:
+        if isinstance(m, BaseMessage):
+            formatted_messages.append(m)
+        elif isinstance(m, dict):
+            role = m.get("role")
+            content = m.get("content")
+            if role == "user":
+                formatted_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                formatted_messages.append(AIMessage(content=content, tool_calls=m.get("tool_calls", [])))
+            elif role == "system":
+                formatted_messages.append(SystemMessage(content=content))
+            elif role == "tool":
+                formatted_messages.append(ToolMessage(content=content, tool_call_id=m.get("tool_call_id")))
+    
+    messages = [SystemMessage(content=system_prompt)] + formatted_messages
     
     response = await llm.ainvoke(messages)
     
     return {
         "final_response": response.content,
-        "messages": [{"role": "assistant", "content": response.content}]
+        "messages": [response]
     }

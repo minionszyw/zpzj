@@ -8,6 +8,7 @@ from app.models.fact import MemoryFact
 from sqlalchemy.future import select
 from datetime import datetime
 from uuid import uuid4
+from langchain_core.messages import AIMessage, HumanMessage
 
 @pytest.mark.asyncio
 async def test_agent_interactive_diagnosis_workflow(db_session):
@@ -15,8 +16,10 @@ async def test_agent_interactive_diagnosis_workflow(db_session):
     测试交互式诊断：当上下文不足时，Agent 应该走引导流程。
     """
     graph = build_graph()
-    m_intent = AsyncMock(content='{"intent": "事业", "context_sufficient": false, "needed_info": ["目前从事的行业", "学历"]}')
-    m_respond = AsyncMock(content="为了更准确地为您分析事业运势，请问您目前的学历和所处行业是什么？")
+    # Intent Node 返回内容
+    m_intent = AsyncMock(content='{"intent": "事业", "context_sufficient": false, "needed_info": ["目前从事的行业", "学历"]} ')
+    # Respond Node 返回 AIMessage
+    m_respond = AIMessage(content="为了更准确地为您分析事业运势，请问您目前的学历和所处行业是什么？")
     m_memory = AsyncMock(content='[]')
 
     with patch("langchain_openai.ChatOpenAI.ainvoke") as mock_invoke:
@@ -24,7 +27,7 @@ async def test_agent_interactive_diagnosis_workflow(db_session):
         initial_state = {
             "archive_id": str(uuid4()),
             "query": "我想看看事业",
-            "messages": [{"role": "user", "content": "我想看看事业"}],
+            "messages": [HumanMessage(content="我想看看事业")],
             "context_sufficient": True
         }
         result = await graph.ainvoke(initial_state)
@@ -56,7 +59,7 @@ async def test_agent_full_calculation_workflow(db_session):
 
     graph = build_graph()
     m_intent = AsyncMock(content='{"intent": "综合", "context_sufficient": true, "needed_info": []}')
-    m_respond = AsyncMock(content="您的命盘显示金水两旺...")
+    m_respond = AIMessage(content="您的命盘显示金水两旺...")
     m_memory = AsyncMock(content='[]')
 
     with patch("langchain_openai.ChatOpenAI.ainvoke") as mock_invoke:
@@ -64,7 +67,7 @@ async def test_agent_full_calculation_workflow(db_session):
         initial_state = {
             "archive_id": str(archive.id),
             "query": "全面分析一下我的命盘",
-            "messages": [{"role": "user", "content": "全面分析一下我的命盘"}],
+            "messages": [HumanMessage(content="全面分析一下我的命盘")],
             "context_sufficient": True
         }
         result = await graph.ainvoke(initial_state)
@@ -92,7 +95,7 @@ async def test_agent_memory_extraction(db_session):
 
     graph = build_graph()
     m_intent = AsyncMock(content='{"intent": "事业", "context_sufficient": true, "needed_info": []}')
-    m_respond = AsyncMock(content="你目前在金融行业工作，今年财运不错。")
+    m_respond = AIMessage(content="你目前在金融行业工作，今年财运不错。")
     m_memory = AsyncMock(content='["用户目前在金融行业工作"]')
 
     # 注意：MemoryService 内部也会生成向量，需要 Patch Embedding
@@ -105,7 +108,7 @@ async def test_agent_memory_extraction(db_session):
         state = {
             "archive_id": str(archive.id),
             "query": "我是在金融行业工作的，帮我看看财运",
-            "messages": [{"role": "user", "content": "我是在金融行业工作的，帮我看看财运"}],
+            "messages": [HumanMessage(content="我是在金融行业工作的，帮我看看财运")],
             "context_sufficient": True
         }
         await graph.ainvoke(state)

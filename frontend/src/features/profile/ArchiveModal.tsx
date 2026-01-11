@@ -189,6 +189,7 @@ export const ArchiveModal: React.FC<Props> = ({ isOpen, onClose, archive, onSucc
                     <label className="block text-xs font-bold text-ink-500 uppercase mb-2">出生时间</label>
                     <input
                       type="datetime-local"
+                      lang="zh-CN"
                       step="1"
                       required
                       className="block w-full rounded-md border border-ink-200 bg-white dark:bg-stone-800 dark:border-ink-700 shadow-sm focus:border-brand-accent focus:ring-brand-accent sm:text-sm p-2.5 outline-none text-ink-900 dark:text-ink-100"

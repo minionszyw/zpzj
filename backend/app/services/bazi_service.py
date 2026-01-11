@@ -49,3 +49,37 @@ class BaziService:
         elif isinstance(obj, list):
             return [BaziService._convert_numpy(i) for i in obj]
         return obj
+
+    @staticmethod
+    def get_essential_data(full_result: dict):
+        """
+        裁剪全量数据，保留核心命盘、格局、能量、神煞和大运概览，
+        移除 trace 和具体的流年流月数据以降低 Token 消耗。
+        """
+        essential = {
+            "birth_solar_datetime": full_result.get("birth_solar_datetime"),
+            "birth_lunar_datetime": full_result.get("birth_lunar_datetime"),
+            "core": full_result.get("core"),
+            "five_elements": full_result.get("five_elements"),
+            "geju": full_result.get("geju"),
+            "analysis": full_result.get("analysis"),
+            "stars": full_result.get("stars"),
+            "auxiliary": full_result.get("auxiliary"),
+            "fortune": {
+                "start_solar": full_result.get("fortune", {}).get("start_solar"),
+                "start_age": full_result.get("fortune", {}).get("start_age"),
+                "da_yun": []
+            }
+        }
+        
+        # 仅保留大运的时间和干支概览
+        if "fortune" in full_result and "da_yun" in full_result["fortune"]:
+            for dy in full_result["fortune"]["da_yun"]:
+                essential["fortune"]["da_yun"].append({
+                    "index": dy.get("index"),
+                    "start_year": dy.get("start_year"),
+                    "start_age": dy.get("start_age"),
+                    "gan_zhi": dy.get("gan_zhi")
+                })
+                
+        return essential

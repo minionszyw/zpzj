@@ -6,7 +6,10 @@
 
 - **高精度排盘**：基于 `zpbz` 引擎，提供包含纳音、十神、藏干、格局、五行能量等在内的深度命理数据。
 - **AI 智能咨询**：利用 LangGraph 驱动的 AI Agent，支持 SSE 流式响应，具备古籍 RAG 检索和长期事实记忆。
-- **档案管理**：支持多档案管理，高精度出生地经纬度解析。
+- **分层记忆架构优化**：
+    - **分片注入**：核心 Prompt 精简化，Token 消耗降低 90%，响应速度显著提升。
+    - **工具化查询**：AI 按需通过 `query_fortune_details` 工具调取详细流年流月数据。
+- **档案管理**：支持多档案管理，高精度出生地经纬度解析，支持中文化日期选择。
 - **响应式设计**：适配 PC 与移动端，提供现代化的 UI/UX 体验。
 
 ## 🛠 技术栈
@@ -14,7 +17,7 @@
 - **前端**：React 19, Tailwind CSS 4, Zustand, Vite, Headless UI, Lucide React.
 - **后端**：FastAPI, SQLModel (PostgreSQL), Redis, LangGraph, LangChain.
 - **存储**：PostgreSQL + pgvector (向量存储), Redis (缓存/限流).
-- **部署**：Docker Compose.
+- **部署**：Docker Compose (全环境热更新支持).
 
 ## 📁 项目结构
 
@@ -50,12 +53,6 @@ cp backend/.env.example backend/.env
 ```
 并填写您的 `LLM_API_KEY` (DeepSeek) 和 `SMTP` 配置。
 
-#### 前端配置
-在 `frontend/` 目录下创建 `.env` 文件：
-```bash
-VITE_API_BASE_URL=http://localhost:8000/api/v1
-```
-
 ### 3. 启动应用 (Docker)
 
 确保您已安装 Docker 和 Docker Compose，然后在根目录执行：
@@ -64,6 +61,7 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 docker-compose up -d --build
 ```
 
+- **开发模式 (热更新)**：项目已配置卷挂载，前端运行于 Vite 开发服务器，后端自动重载。
 - 前端地址：`http://localhost:5173`
 - 后端 API 地址：`http://localhost:8000`
 - API 文档：`http://localhost:8000/docs`
@@ -71,17 +69,13 @@ docker-compose up -d --build
 ## 🧪 开发与测试
 
 ### 后端测试
+在宿主机运行测试需进入 backend 容器：
 ```bash
-cd backend
-pytest
+docker compose exec backend pytest backend/tests/test_agent_optimization.py
 ```
 
-### 前端开发
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 生产构建
+如需生产环境 Nginx 构建，请移除 `docker-compose.yml` 中的 `target: build` 和相关 `command` 重写。
 
 ## 📜 许可证
 

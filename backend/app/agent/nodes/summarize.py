@@ -26,8 +26,20 @@ async def summarize_node(state: AgentState):
         temperature=0
     )
     
-    # 格式化对话历史
-    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+    # 格式化对话历史 (兼容字典和 BaseMessage)
+    history_parts = []
+    for m in messages:
+        if isinstance(m, dict):
+            role = m.get("role", "unknown")
+            content = m.get("content", "")
+            history_parts.append(f"{role}: {content}")
+        else:
+            # LangChain BaseMessage 对象
+            role = getattr(m, "type", "unknown")
+            content = getattr(m, "content", "")
+            history_parts.append(f"{role}: {content}")
+            
+    history_text = "\n".join(history_parts)
     
     prompt = f"""
     请对以下对话历史进行简明扼要的摘要，保留关键的命理咨询信息和用户背景。

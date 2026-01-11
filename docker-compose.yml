@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./zpbz:/app/zpbz
+    # 确保 uvicorn 带有 --reload 参数（Dockerfile 中默认已带）
     depends_on:
       - db
       - redis
@@ -45,12 +46,20 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: build
       args:
         - VITE_API_BASE_URL=http://localhost:8000/api/v1
     container_name: zpzj_frontend
     restart: always
     ports:
-      - "5173:80"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    # 运行开发服务器并监听所有 IP
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
 

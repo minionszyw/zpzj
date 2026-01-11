@@ -24,8 +24,8 @@ class AgentState(TypedDict):
     retrieved_knowledge: List[str]
     retrieved_facts: List[str]
     
-    # 对话历史
-    messages: Annotated[List[Dict[str, str]], add]
+    # 对话历史 (兼容字典格式和 LangChain 消息对象)
+    messages: Annotated[list, add]
     last_summary: str
     response_mode: str # normal, professional
     dialogue_depth: int

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { LoginPage } from './features/auth/LoginPage';
@@ -16,6 +17,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  useEffect(() => {
+    document.documentElement.lang = 'zh-CN';
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
