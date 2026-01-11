@@ -75,10 +75,15 @@ async def chat_completion(
         raise HTTPException(status_code=404, detail="Session not found")
     
     # 获取历史消息作为上下文
+    depth = int(current_user.settings.get("depth", 10))
     history_res = await db.execute(
-        select(Message).where(Message.session_id == session_id).order_by(Message.created_at.asc())
+        select(Message)
+        .where(Message.session_id == session_id)
+        .order_by(Message.created_at.desc())
+        .limit(depth * 2)
     )
-    history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
+    # 因为是用 desc 查的最近消息，需要反转回 asc 顺序给 LLM
+    history_msgs = [{"role": m.role, "content": m.content} for m in reversed(history_res.scalars().all())]
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archive = await ArchiveService.get(db, session.archive_id, current_user.id)
@@ -151,10 +156,14 @@ async def chat_completion_stream(
     await db.commit()
     
     # 获取历史消息
+    depth = int(current_user.settings.get("depth", 10))
     history_res = await db.execute(
-        select(Message).where(Message.session_id == session_id).order_by(Message.created_at.asc())
+        select(Message)
+        .where(Message.session_id == session_id)
+        .order_by(Message.created_at.desc())
+        .limit(depth * 2)
     )
-    history_msgs = [{"role": m.role, "content": m.content} for m in history_res.scalars().all()]
+    history_msgs = [{"role": m.role, "content": m.content} for m in reversed(history_res.scalars().all())]
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archive = await ArchiveService.get(db, session.archive_id, current_user.id)

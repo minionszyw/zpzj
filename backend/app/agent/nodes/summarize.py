@@ -13,11 +13,11 @@ async def summarize_node(state: AgentState):
     messages = state.get("messages", [])
     depth = state.get("dialogue_depth", 10)
     
-    # 当消息数量达到或超过设定深度时触发摘要
-    if len(messages) < depth:
+    # 当消息数量达到或超过设定深度（轮数 * 2）时触发摘要
+    if len(messages) < (depth * 2):
         return {}
 
-    print(f"DEBUG: Triggering summarization for {len(messages)} messages (threshold: {depth})")
+    print(f"DEBUG: Triggering summarization for {len(messages)} messages (threshold: {depth * 2})")
     
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
