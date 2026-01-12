@@ -31,9 +31,21 @@ async def respond_node(state: AgentState, config: RunnableConfig):
     
     mode_instruction = ""
     if mode == "professional":
-        mode_instruction = "当前处于【专业模式】：请大幅增加对古籍原文的引用，使用专业术语进行深入剖析干支作用关系。"
+        mode_instruction = """
+        当前处于【专业模式】：
+        - 目标用户：专业命理师。
+        - 表达风格：逻辑严密，学术氛围浓厚，深入剖析干支作用关系。
+        - 格式要求：必须使用丰富的 Markdown 格式（标题、列表、引用、加粗）来增强可读性。
+        - 内容要求：大幅增加对《渊海子平》等古籍原文的引用，展现推演过程。
+        """
     else:
-        mode_instruction = "当前处于【普通模式】：请使用通俗易懂的语言，侧重于心理疏导和行动建议，避免过多的生僻术语。"
+        mode_instruction = """
+        当前处于【普通模式】：
+        - 目标用户：普通小白用户。
+        - 表达风格：像微信聊天一样自然、口语化，侧重于心理疏导、生活建议和最终结论。
+        - 格式要求：【绝对禁止】使用任何 Markdown 格式（不要使用标题、加粗、列表、表格或 > 引用符号）。请直接输出纯文本。
+        - 内容要求：简化回复逻辑，避免生僻术语，直接给结论。
+        """
 
     # 交互式诊断逻辑增强
     diagnosis_instruction = ""
