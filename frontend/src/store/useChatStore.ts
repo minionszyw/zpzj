@@ -56,13 +56,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (session.isStreaming) return;
 
     const userMsg: Message = { 
-        id: Date.now().toString(), 
+        id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
         role: 'user', 
         content: content, 
         created_at: new Date().toISOString() 
     };
 
-    const aiMsgId = (Date.now() + 1).toString();
+    const aiMsgId = `ai-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const aiMsg: Message = {
       id: aiMsgId,
       role: 'assistant',
@@ -96,46 +96,49 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let buffer = '';
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
             
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep the incomplete line in the buffer
             
             for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.status === 'thinking') {
-                            set((state) => ({
+                if (!line.trim().startsWith('data: ')) continue;
+                
+                const data = line.slice(6);
+                if (data === '[DONE]') break;
+                try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.status === 'thinking') {
+                        set((state) => ({
+                            sessions: {
+                                ...state.sessions,
+                                [sessionId]: { ...state.sessions[sessionId], thinkingMessage: parsed.message }
+                            }
+                        }));
+                    } else if (parsed.content) {
+                        fullContent += parsed.content;
+                        set((state) => {
+                            const currentSession = state.sessions[sessionId];
+                            const newMessages = [...currentSession.messages];
+                            const lastIdx = newMessages.findIndex(m => m.id === aiMsgId);
+                            if (lastIdx !== -1) {
+                                newMessages[lastIdx] = { ...newMessages[lastIdx], content: fullContent };
+                            }
+                            return {
                                 sessions: {
                                     ...state.sessions,
-                                    [sessionId]: { ...state.sessions[sessionId], thinkingMessage: parsed.message }
+                                    [sessionId]: { ...currentSession, messages: newMessages, thinkingMessage: null }
                                 }
-                            }));
-                        } else if (parsed.content) {
-                            fullContent += parsed.content;
-                            set((state) => {
-                                const currentSession = state.sessions[sessionId];
-                                const newMessages = [...currentSession.messages];
-                                const lastIdx = newMessages.findIndex(m => m.id === aiMsgId);
-                                if (lastIdx !== -1) {
-                                    newMessages[lastIdx] = { ...newMessages[lastIdx], content: fullContent };
-                                }
-                                return {
-                                    sessions: {
-                                        ...state.sessions,
-                                        [sessionId]: { ...currentSession, messages: newMessages, thinkingMessage: null }
-                                    }
-                                };
-                            });
-                        }
-                    } catch (e) {}
-                }
+                            };
+                        });
+                    }
+                } catch (e) {}
             }
         }
     } catch (err) {

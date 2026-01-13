@@ -14,6 +14,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      // Redirect to login page
+      // Note: Since we are outside React component, we use window.location
+      if (window.location.pathname !== '/login') {
+         window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authApi = {
   sendCode: (email: string) => api.post('/auth/send-code', { email }),
   login: (email: string, code: string) => api.post('/auth/login', { email, code }),
