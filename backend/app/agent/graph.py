@@ -14,7 +14,15 @@ tools = [query_fortune_details]
 tool_node = ToolNode(tools)
 
 def should_continue(state: AgentState):
-    if not state["context_sufficient"]:
+    # 如果检测到关联人员 ID，且尚未计算结果，必须进入 calculate 节点
+    related_ids = state.get("related_archive_ids", [])
+    related_results = state.get("related_bazi_results", {}) or {}
+    needs_related_calc = any(rid for rid in related_ids if rid not in related_results and rid != state.get("archive_id"))
+    
+    if needs_related_calc:
+        return "calculate"
+        
+    if not state.get("context_sufficient", True):
         return "respond"
     return "calculate"
 

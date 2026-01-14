@@ -18,11 +18,27 @@ async def respond_node(state: AgentState, config: RunnableConfig):
         streaming=True
     ).bind_tools(tools)
     
-    # 核心数据精简
+    # 1. 核心数据准备 (主命盘)
     full_bazi = state.get("bazi_result", {})
     essential_bazi = BaziService.get_essential_data(full_bazi) if full_bazi else {}
     bazi_json = json.dumps(essential_bazi, ensure_ascii=False)
     
+    # 2. 关联人员命盘准备
+    related_bazi_data = []
+    related_results = state.get("related_bazi_results", {})
+    if related_results:
+        for rid, r_full in related_results.items():
+            r_essential = BaziService.get_essential_data(r_full)
+            # 查找姓名
+            r_name = "未知人员"
+            for a in state.get("user_archives", []):
+                if a["id"] == rid:
+                    r_name = f"{a['name']} ({a['relation'] or '相关人员'})"
+                    break
+            related_bazi_data.append({"name": r_name, "data": r_essential})
+    
+    related_json = json.dumps(related_bazi_data, ensure_ascii=False) if related_bazi_data else "无"
+
     knowledge = state.get("retrieved_knowledge", [])
     facts = state.get("retrieved_facts", [])
     summary = state.get("last_summary", "")
@@ -79,10 +95,13 @@ async def respond_node(state: AgentState, config: RunnableConfig):
     {tool_instruction}
     
     【服务器当前时间】:
-    {server_time} (请以此时间为基准计算年龄、流年、流月，不要询问用户当前时间)
+    {server_time}
     
-    【核心命盘数据】:
+    【核心主命盘数据】:
     {bazi_json}
+    
+    【关联人员命盘数据】:
+    {related_json}
     
     【已知事实】:
     {facts}
@@ -94,9 +113,12 @@ async def respond_node(state: AgentState, config: RunnableConfig):
     {knowledge}
     
     分析准则：
-    1. 计算与分析分离：严禁自行推算干支，必须以【核心命盘数据】为准。
-    2. 模式一致性：严格遵守上述【模式指令】。如果当前是普通模式，必须输出没有任何 Markdown 符号的纯文本，且不要模仿【古籍参考】中的引用格式。
-    3. 风格切换：如果历史消息风格与当前指令不符，请以当前指令为准，立即切换风格。
+    1. 计算与分析分离：严禁自行推算干支，必须以上述命盘数据为准。
+    2. 数据优先级：如果【关联人员命盘数据】中的信息与【已知事实】冲突，请以【关联人员命盘数据】为准，因为它是基于档案系统实时生成的。
+    3. 完备性：如果提供了【关联人员命盘数据】，说明该人员的性别、出生时间、出生地点等信息已在系统中完整登记，请直接分析，【严禁】再询问用户该人员的基础信息。
+    4. 多盘分析：如果提供了【关联人员命盘数据】，且用户问题涉及两人关系（如合婚、情感、合作），请进行对比分析。重点关注两盘干支的合冲克害、五行补给以及性格契合度。
+    5. 模式一致性：严格遵守上述【模式指令】。如果当前是普通模式，必须输出没有任何 Markdown 符号的纯文本。
+    6. 风格切换：如果历史消息风格与当前指令不符，请以当前指令为准，立即切换风格。
     """
     
     # 格式化消息历史，确保兼容字典和 BaseMessage 对象

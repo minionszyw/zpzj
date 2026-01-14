@@ -6,6 +6,9 @@ class AgentState(TypedDict):
     archive_id: str
     archive_config: Dict[str, Any]
     
+    # 用户的全部档案列表 (用于跨盘分析检索)
+    user_archives: List[Dict[str, Any]]
+    
     # 服务器当前时间 (时空感知层)
     server_time: str
     
@@ -16,9 +19,11 @@ class AgentState(TypedDict):
     intent: str
     context_sufficient: bool
     needed_info: List[str]
+    related_archive_ids: List[str] # 识别到的相关人员 ID
     
     # 计算结果
     bazi_result: Dict[str, Any]
+    related_bazi_results: Dict[str, Dict[str, Any]] # 相关人员的计算结果
     
     # 知识检索
     retrieved_knowledge: List[str]

@@ -87,6 +87,13 @@ async def chat_completion(
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archive = await ArchiveService.get(db, session.archive_id, current_user.id)
+    
+    # 获取该用户的所有档案，用于跨盘分析
+    all_archives = await ArchiveService.get_multi(db, current_user.id)
+    user_archives_data = [
+        {"id": str(a.id), "name": a.name, "relation": a.relation, "is_self": a.is_self}
+        for a in all_archives
+    ]
 
     graph = build_graph()
     initial_state = {
@@ -99,13 +106,16 @@ async def chat_completion(
             "lat": archive.lat,
             "lng": archive.lng
         },
+        "user_archives": user_archives_data,
         "server_time": now,
         "query": content,
         "messages": history_msgs + [{"role": "user", "content": content}],
         "context_sufficient": True,
         "last_summary": session.last_summary or "",
         "response_mode": current_user.settings.get("response_mode", "normal"),
-        "dialogue_depth": int(current_user.settings.get("depth", 10))
+        "dialogue_depth": int(current_user.settings.get("depth", 10)),
+        "related_archive_ids": [],
+        "related_bazi_results": {}
     }
     
     agent_result = await graph.ainvoke(initial_state)
@@ -168,6 +178,13 @@ async def chat_completion_stream(
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archive = await ArchiveService.get(db, session.archive_id, current_user.id)
 
+    # 获取该用户的所有档案，用于跨盘分析
+    all_archives = await ArchiveService.get_multi(db, current_user.id)
+    user_archives_data = [
+        {"id": str(a.id), "name": a.name, "relation": a.relation, "is_self": a.is_self}
+        for a in all_archives
+    ]
+
     async def event_generator():
         graph = build_graph()
         initial_state = {
@@ -180,13 +197,16 @@ async def chat_completion_stream(
                 "lat": archive.lat,
                 "lng": archive.lng
             },
+            "user_archives": user_archives_data,
             "server_time": now,
             "query": content,
             "messages": history_msgs,
             "context_sufficient": True,
             "last_summary": session.last_summary or "",
             "response_mode": current_user.settings.get("response_mode", "normal"),
-            "dialogue_depth": int(current_user.settings.get("depth", 10))
+            "dialogue_depth": int(current_user.settings.get("depth", 10)),
+            "related_archive_ids": [],
+            "related_bazi_results": {}
         }
         
         full_content = ""
