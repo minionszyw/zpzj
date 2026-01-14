@@ -18,7 +18,16 @@ class BaziService:
     @staticmethod
     async def get_result(archive: Archive):
         # 1. 尝试从缓存获取
-        cache_key = f"bazi_res:{archive.id}:{hash(json.dumps(archive.algorithms_config, sort_keys=True))}"
+        # 缓存键必须包含所有影响排盘结果的变量
+        cache_params = {
+            "birth_time": archive.birth_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "calendar_type": archive.calendar_type,
+            "gender": archive.gender,
+            "lng": float(archive.lng),
+            "lat": float(archive.lat),
+            "config": archive.algorithms_config
+        }
+        cache_key = f"bazi_res:{archive.id}:{hash(json.dumps(cache_params, sort_keys=True))}"
         try:
             cached = await redis_client.get(cache_key)
             if cached:

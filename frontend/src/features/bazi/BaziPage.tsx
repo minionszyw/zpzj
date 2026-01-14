@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { archiveApi } from '../../api/archive';
-import type { Archive } from '../../api/archive';
+import { useArchiveStore } from '../../store/useArchiveStore';
 import { BaziChart } from './BaziChart';
 import { FortuneSection } from './FortuneSection';
 import { User, ChevronDown, AlertCircle } from 'lucide-react';
@@ -10,23 +10,14 @@ import { Fragment } from 'react';
 import { Card } from '../../components/ui/Card';
 
 export const BaziPage: React.FC = () => {
-  const [archives, setArchives] = useState<Archive[]>([]);
-  const [selectedArchiveId, setSelectedArchiveId] = useState<string | null>(null);
+  const { archives, selectedArchiveId, setSelectedArchiveId, fetchArchives } = useArchiveStore();
   const [baziData, setBaziData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    archiveApi.list().then((res) => {
-      setArchives(res.data);
-      if (res.data.length > 0) {
-        const self = res.data.find(a => a.is_self);
-        setSelectedArchiveId(self ? self.id : res.data[0].id);
-      }
-    }).catch(err => {
-      console.error('Failed to load archives', err);
-      setError('无法加载档案列表');
-    });
+    // Always refresh archives when entering the page to ensure we have latest data
+    fetchArchives();
   }, []);
 
   useEffect(() => {
@@ -51,7 +42,7 @@ export const BaziPage: React.FC = () => {
           setLoading(false);
         });
     }
-  }, [selectedArchiveId]);
+  }, [selectedArchiveId, archives]); // Added archives to dependency to catch updates
 
   const selectedArchive = archives.find(a => a.id === selectedArchiveId);
 

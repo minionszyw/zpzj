@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { archiveApi } from '../../api/archive';
 import type { Archive } from '../../api/archive';
+import { useArchiveStore } from '../../store/useArchiveStore';
 import { Plus, Edit2, Trash2, User as UserIcon, MapPin, Calendar, Clock } from 'lucide-react';
 import { ArchiveModal } from './ArchiveModal';
 import { format } from 'date-fns';
@@ -9,22 +10,9 @@ import { Card } from '../../components/ui/Card';
 import { cn } from '../../utils/cn';
 
 export const ArchiveListPage: React.FC = () => {
-  const [archives, setArchives] = useState<Archive[]>([]);
+  const { archives, fetchArchives, loading } = useArchiveStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArchive, setEditingArchive] = useState<Archive | undefined>();
-  const [loading, setLoading] = useState(false);
-
-  const fetchArchives = async () => {
-    try {
-      setLoading(true);
-      const response = await archiveApi.list();
-      setArchives(response.data);
-    } catch (err) {
-      console.error('Failed to fetch archives', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchArchives();
