@@ -1,0 +1,80 @@
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: zpzj_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-zpzj}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: zpzj_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: zpzj_backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    environment:
+      # 覆盖 .env 中的 localhost 为容器内的 db 主机名
+      POSTGRES_SERVER: db
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app/backend:/app/zpbz
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./zpbz:/app/zpbz
+      - ./data:/app/data
+    # 确保 uvicorn 带有 --reload 和 --proxy-headers
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: build
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    container_name: zpzj_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - ./backend/.env
+    # 使用 build + preview 模式，并强制监听 5173 端口
+    command: sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 5173"
+    depends_on:
+      - backend
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: zpzj_tunnel
+    restart: always
+    env_file:
+      - ./backend/.env
+    command: tunnel run
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:

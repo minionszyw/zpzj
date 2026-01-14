@@ -1,68 +1,75 @@
 services:
   db:
     image: ankane/pgvector:latest
-    container_name: zpzj_db
+    container_name: zpzj_db_prod
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-zpzj}
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - zpzj_network
 
   redis:
     image: redis:7-alpine
-    container_name: zpzj_redis
+    container_name: zpzj_redis_prod
     restart: always
-    ports:
-      - "6379:6379"
+    networks:
+      - zpzj_network
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: zpzj_backend
+    container_name: zpzj_backend_prod
     restart: always
     env_file:
       - ./backend/.env
     environment:
-      # 覆盖 .env 中的 localhost 为容器内的 db 主机名
       POSTGRES_SERVER: db
       REDIS_URL: redis://redis:6379/0
       PYTHONPATH: /app/backend:/app/zpbz
-    ports:
-      - "8000:8000"
+    # 生产环境增加 --proxy-headers
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
     volumes:
-      - ./backend:/app/backend
-      - ./zpbz:/app/zpbz
-      - ./data:/app/data
-    # 确保 uvicorn 带有 --reload 参数（Dockerfile 中默认已带）
+      - ./data:/app/data:ro
     depends_on:
       - db
       - redis
+    networks:
+      - zpzj_network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: build
       args:
-        - VITE_API_BASE_URL=http://localhost:8000/api/v1
-    container_name: zpzj_frontend
+        # 在生产环境中，API 路径通常是相对于当前域名的
+        - VITE_API_BASE_URL=/api/v1
+    container_name: zpzj_frontend_prod
+    restart: always
+    networks:
+      - zpzj_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: zpzj_nginx_prod
     restart: always
     ports:
-      - "5173:5173"
+      - "80:80"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8000/api/v1
-    # 运行开发服务器并监听所有 IP
-    command: npm run dev -- --host 0.0.0.0
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+      - frontend
+    networks:
+      - zpzj_network
+
+networks:
+  zpzj_network:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_data_prod:

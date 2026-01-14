@@ -54,3 +54,5 @@ data/vector_db/
 
 # Playwright MCP
 .playwright-mcp/
+
+.geminiignore

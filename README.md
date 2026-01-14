@@ -14,10 +14,10 @@
 
 ## 🛠 技术栈
 
-- **前端**：React 19, Tailwind CSS 4, Zustand, Vite, Headless UI, Lucide React.
+- **前端**：React 19, Tailwind CSS 4, Zustand, Vite (Rolldown), Headless UI, Lucide React.
 - **后端**：FastAPI, SQLModel (PostgreSQL), Redis, LangGraph, LangChain.
 - **存储**：PostgreSQL + pgvector (向量存储), Redis (缓存/限流).
-- **部署**：Docker Compose (全环境热更新支持).
+- **部署**：Docker Compose (全环境容器化).
 
 ## 📁 项目结构
 
@@ -25,57 +25,63 @@
 zpzj/
 ├── backend/                # FastAPI 后端项目
 │   ├── app/                # 应用核心代码
-│   ├── tests/              # 后端测试用例
+│   ├── .env.example        # 环境变量模板 (全项目配置中心)
 │   └── Dockerfile          # 后端镜像定义
 ├── frontend/               # React 前端项目
 │   ├── src/                # 前端源代码
-│   └── package.json        # 前端依赖
+│   └── Dockerfile          # 前端生产/开发镜像定义
 ├── zpbz/                   # 核心命理计算引擎 (Git Submodule)
-├── data/                   # 命理古籍等原始数据
-└── docker-compose.yml      # 全栈容器化定义
+├── data/                   # 命理古籍等原始数据 (挂载至容器)
+├── nginx/                  # 生产环境 Nginx 配置 (支持 SSE 优化)
+├── docker-compose.yml      # 生产环境部署配置
+└── docker-compose-dev.yml  # 开发环境部署配置 (含 Cloudflare Tunnel)
 ```
 
 ## 🚀 快速开始
 
-### 1. 克隆项目
+### 1. 环境准备
 
+- 安装 Docker & Docker Compose。
+- 在 `backend/` 目录下创建 `.env` 文件（由 `backend/.env.example` 复制）：
+  ```bash
+  cp backend/.env.example backend/.env
+  ```
+- **注意**：本项目采用中心化配置，前端与后端的环境变量均在 `backend/.env` 中管理。
+
+### 2. 启动应用 (Docker)
+
+#### 开发模式 (推荐远程/本地开发)
+集成 **Cloudflare Tunnel** 且前端开启了 **Preview 模式** 以优化远程访问速度。
 ```bash
-git clone <repository-url>
-cd zpzj
+docker compose -f docker-compose-dev.yml up -d --build
 ```
+- **本地访问**：前端 `http://localhost:5173`，后端 `http://localhost:8000`。
+- **远程访问**：通过隧道域名访问（需在 `.env` 中配置 `TUNNEL_TOKEN`）。
+- **优化**：开发模式前端使用 `npm run build && npm run preview`，解决远程加载慢的问题。
 
-### 2. 环境配置
-
-#### 后端配置
-在 `backend/` 目录下创建 `.env` 文件（可参考 `.env.example`）：
+#### 生产模式 (阿里云 ESC / 线上环境)
+使用 Nginx 反向代理，支持 SSE 流式输出优化。
 ```bash
-cp backend/.env.example backend/.env
+docker compose up -d --build
 ```
-并填写您的 `LLM_API_KEY` (DeepSeek) 和 `SMTP` 配置。
+- **访问地址**：`http://your-ip-or-domain`。
+- **特性**：所有请求经由 Nginx，后端自动识别 `--proxy-headers`。
 
-### 3. 启动应用 (Docker)
+## ⚙️ 核心配置说明 (`backend/.env`)
 
-确保您已安装 Docker 和 Docker Compose，然后在根目录执行：
-
-```bash
-docker-compose up -d --build
-```
-
-- **开发模式 (热更新)**：项目已配置卷挂载，前端运行于 Vite 开发服务器，后端自动重载。
-- 前端地址：`http://localhost:5173`
-- 后端 API 地址：`http://localhost:8000`
-- API 文档：`http://localhost:8000/docs`
+| 变量名 | 说明 |
+| :--- | :--- |
+| `TUNNEL_TOKEN` | Cloudflare Tunnel 鉴权令牌，用于外网穿透。 |
+| `VITE_ALLOWED_HOSTS` | 前端允许访问的域名，解决 Vite 开发服务器 Host 限制。 |
+| `VITE_API_BASE_URL` | 前端请求后端的地址，远程访问需填隧道的 API 域名。 |
+| `LLM_API_KEY` | DeepSeek 或其他大模型的 API KEY。 |
 
 ## 🧪 开发与测试
 
 ### 后端测试
-在宿主机运行测试需进入 backend 容器：
 ```bash
-docker compose exec backend pytest backend/tests/test_agent_optimization.py
+docker compose -f docker-compose-dev.yml exec backend pytest
 ```
-
-### 生产构建
-如需生产环境 Nginx 构建，请移除 `docker-compose.yml` 中的 `target: build` 和相关 `command` 重写。
 
 ## 📜 许可证
 
